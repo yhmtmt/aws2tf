@@ -1,22 +1,84 @@
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-import pdb
+#import pdb
 import csv
 
-pdb.set_trace()
+#pdb.set_trace()
+
+def getAWS1BatchSection(batch_size, input_length, predict_length, eng, rud, rroll, rpitch, ryaw, rcog, sog, rsog, start=0.,end=1.):
+    istart = int(start*float(len(eng)))
+    iend = int(end*float(len(eng)))
+    rnum = [random.randint(istart,iend - predict_length - input_length) for i in range(batch_size)]
+    xs = np.array([[[eng[i],rud[i],rroll[i],rpitch[i],ryaw[i],rcog[i],sog[i],rsog[i]] for i in range(r, r + input_length)] for r in rnum])
+    ts = np.array([[[rroll[i],rpitch[i],ryaw[i],rcog[i],sog[i],rsog[i]] for i in range(r + input_length, r + input_length + predict_length)] for r in rnum])
+    return xs, np.reshape(ts, (batch_size,-1))
+
+def getAWS1BatchSectionSeq(predict_length, eng, rud, rroll, rpitch, ryaw, rcog, sog, rsog, ipos, start=0.,end=1.):
+    istart = max(ipos, int(start*float(len(eng))))
+    iend = int(end*float(len(eng))) - predict_length - 1
+
+    ismpl = ipos + istart
+    if(ismpl >= iend):
+#        return np.array([]),np.array([])
+        return None, None
+        
+    xs = np.array([[[eng[ismpl],rud[ismpl],rroll[ismpl],rpitch[ismpl],ryaw[ismpl],rcog[ismpl],sog[ismpl],rsog[ismpl]]]])
+    ts = np.array([[[rroll[i],rpitch[i],ryaw[i],rcog[i],sog[i],rsog[i]] for i in range(ismpl + 1, ismpl + 1 + predict_length)]])
+    return xs, np.reshape(ts, (1,-1))
+
+def loadAWS1DataList(fname):
+    f = open(fname)
+    data = f.read()
+    fsizes = []
+    fcsv_names = data.split('\n')
+
+    for fcsv_name in fcsv_names:
+        try:
+            fcsv = open(fcsv_name)
+            rcsv = csv.reader(fcsv, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
+
+            data=[v for v in rcsv]
+            fsizes.append(len(data))
+        except IOError:
+            fsizes.append(0)
+    return fcsv_names, fsizes
+
+
+def getAWS1DataBatch(fcsv_names, fsizes, batch_size, input_length, predict_length, eval=False):
+    total_fsize = 0;
+    
+    for fsize in fsizes:
+        total_fsize += fsize
+    
+    nrnd = random.randint(0, total_fsize-1)
+
+    total_fsize = 0
+    ifile = 0
+    for i in range(len(fsizes)):
+        total_fsize +=fsizes[i]
+        if(nrnd < total_fsize):
+            ifile = i
+            break;
+
+    t,eng,rud,roll,rroll,pitch,rpitch,yaw,ryaw,cog,rcog,sog,rsog = loadAWS1Data(fcsv_names[ifile])
+    
+    section = random.randint(0, 1)
+    if eval:
+        section = 2 * section + 1
+        print("Batch from %s section %d" % (fcsv_names[ifile], section))
+    else:
+        section = 2 * section
+
+    xs, ts = getAWS1BatchSection(batch_size, input_length, predict_length, eng, rud, rroll, rpitch, ryaw, rcog, sog, rsog, section * 0.25, min(1.0, (section + 1) * 0.25))
+
+    return xs, ts
+   
 
 def loadAWS1Data(fname, tstart=0, tend=sys.float_info.max, wavg=5):
     bstart=False
     bend=False
-    fcsv = open(fname)
-    rcsv = csv.reader(fcsv, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
-
-    data=[v for v in rcsv]
-    recname={}
-    lenTimeSequence=len(data)
-    lenRecord=len(data[0])
-
     t=[]
     eng=[]
     rud=[]
@@ -30,6 +92,18 @@ def loadAWS1Data(fname, tstart=0, tend=sys.float_info.max, wavg=5):
     ryaw=[]
     rcog=[]
     rsog=[]
+    try:
+        fcsv = open(fname)
+    except IOError:
+        return np.array(t), np.array(eng), np.array(rud), np.array(roll), np.array(rroll), np.array(pitch), np.array(rpitch), np.array(yaw), np.array(ryaw), np.array(cog), np.array(rcog), np.array(sog), np.array(rsog)
+
+    rcsv = csv.reader(fcsv, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
+
+    data=[v for v in rcsv]
+    recname={}
+    lenTimeSequence=len(data)
+    lenRecord=len(data[0])
+
 
     #creating dictionaly of record name
     for i in range(len(data[0])):
@@ -128,47 +202,4 @@ def loadAWS1Data(fname, tstart=0, tend=sys.float_info.max, wavg=5):
     rcog.append(0.)
     rsog.append(0.)
     
-    return np.array(t), np.array(roll), np.array(rroll), np.array(pitch), np.array(rpitch), np.array(yaw), np.array(ryaw), np.array(cog), np.array(rcog), np.array(sog), np.array(rsog)
-
-args = sys.argv
-
-if len(args) == 1:
-    sys.exit()
-
-t,roll,rroll,pitch,rpitch,yaw,ryaw,cog,rcog,sog,rsog = loadAWS1Data(args[1])
-
-plt.subplot(2,1,1)
-plt.plot(t, cog)
-plt.subplot(2,1,2)
-plt.plot(t, rcog)
-plt.show()
-
-plt.subplot(2,1,1)
-plt.plot(t, yaw)
-plt.subplot(2,1,2)
-plt.plot(t, ryaw)
-plt.show()
-
-plt.subplot(2,1,1)
-plt.plot(t, sog)
-plt.subplot(2,1,2)
-plt.plot(t, rsog)
-plt.show()
-
-for i in range(len(t)-1):
-#    print("t=%f roll=%f rroll=%f pitch=%f rpitch=%f yaw=%f ryaw=%f cog=%f rcog=%f sog=%f rsog=%f \n" % t[i], roll[i], rroll[i], pitch[i], rpitch[i], yaw[i], ryaw[i], cog[i], rcog[i], sog[i], rsog[i])
-    print("t=%f " % t[i])
-    print("roll=%f " % roll[i])
-    print("rroll=%f " % rroll[i])
-    print("pitch=%f " % pitch[i])
-    print("rpitch=%f " % rpitch[i])
-    print("yaw=%f " % yaw[i])
-    print("ryaw=%f " % ryaw[i])
-    print("cog=%f " % cog[i])
-    print("rcog=%f " % rcog[i])
-    print("sog=%f " % sog[i])
-    print("rsog=%f " % rsog[i])
-    print("\n")
-
-    
-    
+    return np.array(t), np.array(eng), np.array(rud), np.array(roll), np.array(rroll), np.array(pitch), np.array(rpitch), np.array(yaw), np.array(ryaw), np.array(cog), np.array(rcog), np.array(sog), np.array(rsog)
