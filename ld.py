@@ -37,7 +37,7 @@ def getAWS1BatchSectionSeq(str_vec_in, str_vec_out, predict_length, data, ipos, 
     ts = np.array([[getAWS1DataAt(str_vec_out, data, i) for i in range(ismpl + 1, ismpl + 1 + predict_length)]])
     return xs, np.reshape(ts, (1,-1))
 
-def loadAWS1DataList(fname):
+def loadAWS1DataList(fname, bstat=True):
     f = open(fname)
     data = f.read()
     fsizes = []
@@ -52,6 +52,17 @@ def loadAWS1DataList(fname):
             fsizes.append(len(data))
         except IOError:
             fsizes.append(0)
+    
+    if(bstat):
+        for ifile in range(len(fcsv_names)):
+            if(fsizes[ifile]):
+                stat = statAWS1Data(fcsv_names[ifile])
+                print("File #%d Name %s Total Time %f" % (ifile, fcsv_names[ifile], stat["duration"]))
+                for key in stat:
+                    print ("%s:"% key),
+                    print (stat[key])
+                print ""
+
     return fcsv_names, fsizes
 
 
@@ -85,6 +96,57 @@ def getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, in
 
     return xs, ts
    
+
+def statAWS1DataRec(rec):
+    rmax = 0.0
+    rmin = sys.float_info.max
+    ravg = 0.0
+
+    for i in range(len(rec)):
+        ravg += rec[i]
+        rmax = max(rmax, rec[i])
+        rmin = min(rmin, rec[i])
+
+    return rmax, rmin, ravg/float(len(rec))
+
+def statAWS1Data(fname):
+    str_vec=["t", "eng", "rud", "rev", "roll", "rroll", "pitch", "rpitch", "yaw", "ryaw", "cog", "rcog", "sog", "rsog"]
+    data = loadAWS1Data(fname, str_vec)
+
+    t=data["t"]
+    duration=t[-1]
+
+    dt=[t[i+1]-t[i] for i in range(len(t)-1)]
+    dt_max, dt_min, dt_avg = statAWS1DataRec(dt)
+    eng_max, eng_min, eng_avg = statAWS1DataRec(data["eng"])
+    rud_max, rud_min, rud_avg = statAWS1DataRec(data["rud"])
+    rev_max, rev_min, rev_avg = statAWS1DataRec(data["rev"])
+    roll_max, roll_min, roll_avg = statAWS1DataRec(data["roll"])
+    pitch_max, pitch_min, pitch_avg = statAWS1DataRec(data["pitch"])
+    rpitch_max, rpitch_min, rpitch_avg = statAWS1DataRec(data["rpitch"])
+    yaw_max, yaw_min, yaw_avg = statAWS1DataRec(data["yaw"])
+    ryaw_max, ryaw_min, ryaw_avg = statAWS1DataRec(data["ryaw"])
+    cog_max, cog_min, cog_avg = statAWS1DataRec(data["cog"])
+    rcog_max, rcog_min, rcog_avg = statAWS1DataRec(data["rcog"])
+    sog_max, sog_min, sog_avg = statAWS1DataRec(data["sog"])
+    rsog_max, rsog_min, rsog_avg = statAWS1DataRec(data["rsog"])
+
+    return {
+        "duration":duration, 
+        "dt_max": dt_max, "dt_min": dt_min, "dt_avg": dt_avg,
+        "eng_max": eng_max, "eng_min": eng_min, "eng_avg": eng_avg,
+        "rud_max":rud_max, "rud_min":rud_min, "rud_avg":rud_avg,
+        "rev_max": rev_max, "rev_min": rev_min, "rev_avg": rev_avg,
+        "roll_max":roll_max, "roll_min":roll_min, "roll_avg":roll_avg,
+        "pitch_max":pitch_max, "pitch_min":pitch_min, "pitch_avg":pitch_avg,
+        "rpitch_max":rpitch_max, "rpitch_min":rpitch_min, "rpitch_avg":rpitch_avg,
+        "yaw_max":yaw_max, "yaw_min":yaw_min, "yaw_avg":yaw_avg,
+        "ryaw_max":ryaw_max, "ryaw_min":ryaw_min, "ryaw_avg":ryaw_avg,
+        "cog_max":cog_max, "cog_min":cog_min, "cog_avg":cog_avg,
+        "rcog_max":rcog_max, "rcog_min":rcog_min, "rcog_avg":rcog_avg,
+        "sog_max":sog_max, "sog_min":sog_min, "sog_avg":sog_avg,
+        "rsog_max":rsog_max, "rsog_min":rsog_min, "rsog_avg":rsog_avg
+    }
 
 def loadAWS1Data(fname, str_vec, tstart=0, tend=sys.float_info.max, wavg=5):
     bstart=False

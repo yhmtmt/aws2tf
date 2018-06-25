@@ -30,7 +30,7 @@ batch_size = 128
 learning_rate = 0.001
 forget_bias = 0.8
 
-do_train = True
+do_train = False
 refine_existing_training = True
 model_path = "/home/ubuntu/matumoto/model/"
 plot_path="/home/ubuntu/matumoto/plot/"
