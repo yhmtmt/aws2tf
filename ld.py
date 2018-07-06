@@ -6,23 +6,23 @@ import sys
 import csv
 
 #pdb.set_trace()
-def getAWS1DataAt(str_vec, data, idx):
-    vec = [data[key][idx] for key in str_vec]
+def getAWS1DataAt(str_vec, fac_vec, data, idx):
+    vec = [data[str_vec[ikey]][idx]*fac_vec[ikey] for ikey in range(len(str_vec))]
     return vec
 
 
-def getAWS1BatchSection(str_vec_in, str_vec_out, batch_size, input_length, predict_length, data, start=0.,end=1.):
+def getAWS1BatchSection(str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, batch_size, input_length, predict_length, data, start=0.,end=1.):
     if(len(str_vec_in) == 0 or len(str_vec_out) == 0):
         return None, None
     len_data = len(data[str_vec_in[0]])
     istart = int(start*float(len_data))
     iend = int(end*float(len_data))
     rnum = [random.randint(istart,iend - predict_length - input_length) for i in range(batch_size)]
-    xs = np.array([[getAWS1DataAt(str_vec_in, data, i) for i in range(r, r + input_length)] for r in rnum])
-    ts = np.array([[getAWS1DataAt(str_vec_out, data, i) for i in range(r + input_length, r + input_length + predict_length)] for r in rnum])
+    xs = np.array([[getAWS1DataAt(str_vec_in, fac_vec_in, data, i) for i in range(r, r + input_length)] for r in rnum])
+    ts = np.array([[getAWS1DataAt(str_vec_out, fac_vec_out, data, i) for i in range(r + input_length, r + input_length + predict_length)] for r in rnum])
     return xs, np.reshape(ts, (batch_size,-1))
 
-def getAWS1BatchSectionSeq(str_vec_in, str_vec_out, predict_length, data, ipos, start=0.,end=1.):
+def getAWS1BatchSectionSeq(str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, predict_length, data, ipos, start=0.,end=1.):
     if(len(str_vec_in) == 0 or len(str_vec_out) == 0):
         return None, None
     len_data = len(data[str_vec_in[0]])
@@ -33,8 +33,8 @@ def getAWS1BatchSectionSeq(str_vec_in, str_vec_out, predict_length, data, ipos, 
     if(ismpl >= iend):
         return None, None
         
-    xs = np.array([[getAWS1DataAt(str_vec_in, data, ismpl)]])
-    ts = np.array([[getAWS1DataAt(str_vec_out, data, i) for i in range(ismpl + 1, ismpl + 1 + predict_length)]])
+    xs = np.array([[getAWS1DataAt(str_vec_in, fac_vec_in, data, ismpl)]])
+    ts = np.array([[getAWS1DataAt(str_vec_out, fac_vec_out, data, i) for i in range(ismpl + 1, ismpl + 1 + predict_length)]])
     return xs, np.reshape(ts, (1,-1))
 
 def loadAWS1DataList(fname, bstat=True):
@@ -53,21 +53,16 @@ def loadAWS1DataList(fname, bstat=True):
         except IOError:
             fsizes.append(0)
     
-    if(bstat):
-        for ifile in range(len(fcsv_names)):
-            if(fsizes[ifile]):
-                stat = statAWS1Data(fcsv_names[ifile])
-                print("File #%d Name %s Total Time %f" % (ifile, fcsv_names[ifile], stat["duration"]))
-                for key in stat:
-                    print ("%s:"% key),
-                    print (stat[key])
-                print ""
+    for ifile in range(len(fcsv_names)):
+        if(fsizes[ifile]):
+            print("File[%d] %s " % (ifile, fcsv_names[ifile]))
+            stat=statAWS1Data(fcsv_names[ifile], bstat)
 
     return fcsv_names, fsizes
 
 
-def getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, input_length, predict_length, eval=False):
-    total_fsize = 0;
+def getAWS1DataBatch(fcsv_names, str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, fsizes, batch_size, input_length, predict_length, eval=False):
+    total_fsize = 0
     
     for fsize in fsizes:
         total_fsize += fsize
@@ -80,7 +75,7 @@ def getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, in
         total_fsize +=fsizes[i]
         if(nrnd < total_fsize):
             ifile = i
-            break;
+            break
 
     str_vec = list(set(str_vec_in + str_vec_out))
     aws1_data = loadAWS1Data(fcsv_names[ifile],str_vec)
@@ -92,7 +87,7 @@ def getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, in
     else:
         section = 2 * section
 
-    xs, ts = getAWS1BatchSection(str_vec_in, str_vec_out, batch_size, input_length, predict_length, aws1_data, section * 0.25, min(1.0, (section + 1) * 0.25))
+    xs, ts = getAWS1BatchSection(str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, batch_size, input_length, predict_length, aws1_data, section * 0.25, min(1.0, (section + 1) * 0.25))
 
     return xs, ts
    
@@ -109,7 +104,7 @@ def statAWS1DataRec(rec):
 
     return rmax, rmin, ravg/float(len(rec))
 
-def statAWS1Data(fname):
+def statAWS1Data(fname, bstat=True):
     str_vec=["t", "eng", "rud", "rev", "roll", "rroll", "pitch", "rpitch", "yaw", "ryaw", "cog", "rcog", "sog", "rsog"]
     data = loadAWS1Data(fname, str_vec)
 
@@ -130,6 +125,21 @@ def statAWS1Data(fname):
     rcog_max, rcog_min, rcog_avg = statAWS1DataRec(data["rcog"])
     sog_max, sog_min, sog_avg = statAWS1DataRec(data["sog"])
     rsog_max, rsog_min, rsog_avg = statAWS1DataRec(data["rsog"])
+
+    print("Total Time %f" % duration)
+    print("dt max %f avg %f min %f" % (dt_max, dt_avg, dt_min))
+    print("eng max %f avg %f min %f" % (eng_max, eng_avg, eng_min))
+    print("rud max %f avg %f min %f" % (rud_max, rud_avg, rud_min))
+    print("rev max %f avg %f min %f" % (rev_max, rev_avg, rev_min))
+    print("roll max %f avg %f min %f" % (roll_max, roll_avg, roll_min))
+    print("pitch max %f avg %f min %f" % (pitch_max, pitch_avg, pitch_min))
+    print("rpitch max %f avg %f min %f" % (rpitch_max, rpitch_avg, rpitch_min))
+    print("yaw max %f avg %f min %f" % (yaw_max, yaw_avg, yaw_min))
+    print("ryaw max %f avg %f min %f" % (ryaw_max, ryaw_avg, ryaw_min))
+    print("cog max %f avg %f min %f" % (cog_max, cog_avg, cog_min))
+    print("rcog max %f avg %f min %f" % (rcog_max, rcog_avg, rcog_min))
+    print("sog max %f avg %f min %f" % (sog_max, sog_avg, sog_min))
+    print("rsog max %f avg %f min %f" % (rsog_max, rsog_avg, rsog_min))
 
     return {
         "duration":duration, 

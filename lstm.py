@@ -6,37 +6,8 @@ import sys
 import pdb
 import csv
 import ld
+import argparse
 pdb.set_trace()
-
-# 13 inputs [eng, rud, rev, roll, rroll, pitch, rpitch, yaw, ryaw, cog, rcog, sog, rsog]
-# 6 outputs [rroll, rpitch, ryaw, rcog, sog, rsog]
-str_vec_in = ["eng", "rud", "rev", "roll", "rroll", "pitch", "rpitch", "yaw", "ryaw", "cog", "rcog", "sog", "rsog"]
-str_vec_out = ["rroll", "rpitch", "ryaw", "rcog", "sog", "rsog"]
-str_vec = list(set(str_vec_in + str_vec_out))
-str_vec_in
-str_vec_out
-str_vec
-
-dim_vec_in = len(str_vec_in)
-dim_vec_out = len(str_vec_out)
-num_nodes_in = dim_vec_in
-num_hidden_nodes = 128
-num_lstm_layers = 2
-len_pred = 32
-num_nodes_out = dim_vec_out * len_pred
-length_of_sequences = 128
-num_training_epochs = 200000
-batch_size = 128
-learning_rate = 0.001
-forget_bias = 0.8
-
-do_train = False
-refine_existing_training = True
-model_path = "/home/ubuntu/matumoto/model/"
-plot_path="/home/ubuntu/matumoto/plot/"
-model_name = "lstm_%dx%d_i%d_o%d" % (num_hidden_nodes, num_lstm_layers, num_nodes_in, num_nodes_out)
-
-print("Model:"+ model_path + model_name + ".ckpd")
 
 def inference(input_ph):
     with tf.name_scope("inference") as scope:
@@ -50,7 +21,7 @@ def inference(input_ph):
         in1 = tf.transpose(input_ph, [1, 0, 2])
         in2 = tf.reshape(in1, [-1, num_nodes_in])
         in3 = tf.matmul(in2, weight1_var) + bias1_var
-        in4 = tf.reshape(in3, [length_of_sequences, -1, num_hidden_nodes])
+        in4 = tf.reshape(in3, [len_seq, -1, num_hidden_nodes])
         cell = tf.nn.rnn_cell.BasicLSTMCell(num_hidden_nodes, forget_bias=forget_bias, state_is_tuple=True)
 
         if(do_train):
@@ -81,25 +52,89 @@ def calc_accuracy(output_op, inputs, ts, prints=False):
     print("loss %f" % loss)
     return output
 
-args = sys.argv
+# 13 inputs [eng, rud, rev, roll, rroll, pitch, rpitch, yaw, ryaw, cog, rcog, sog, rsog]
+# 6 outputs [rroll, rpitch, ryaw, rcog, sog, rsog]
+str_vec_in = ["eng", "rud", "rev", "roll", "rroll", "pitch", "rpitch", "yaw", "ryaw", "cog", "rcog", "sog", "rsog"]
+str_vec_out = ["rroll", "rpitch", "ryaw", "rcog", "sog", "rsog"]
+fac_vec_in=[1.0/255.0, 1.0/255.0, 1.0/5500, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/360.0, 1.0/180.0, 1.0/15.0, 1.0/5.0]
+fac_vec_out=[1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/15.0, 1.0/5.0]
+#str_vec_out = ["sog", "rsog"]
+#fac_vec_out=[1.0/15.0, 1.0/5.0]
 
-if len(args) == 1:
+str_vec = list(set(str_vec_in + str_vec_out))
+
+num_hidden_nodes = 64
+num_lstm_layers = 2
+len_pred = 32
+len_seq = 256
+num_training_epochs = 50000
+batch_size = 128
+learning_rate = 0.001
+forget_bias = 0.8
+do_train = False
+refine_existing_model = True
+model_path = "/home/ubuntu/matumoto/model/"
+plot_path="/home/ubuntu/matumoto/plot/"
+
+
+parser = argparse.ArgumentParser()
+if(sys.stdin.isatty()):
+    parser.add_argument("list_file", type=str)
+parser.add_argument("--train", action="store_true")
+parser.add_argument("--retrain", action="store_true")
+parser.add_argument("--hidden", type=int)
+parser.add_argument("--layer", type=int)
+parser.add_argument("--batch", type=int)
+parser.add_argument("--epoch", type=int)
+parser.add_argument("--seq", type=int)
+parser.add_argument("--pred", type=int)
+args = parser.parse_args()
+
+if not hasattr(args, "list_file"):    
     sys.exit()
+else:
+    flist = args.list_file
+        
+if args.train:
+    do_train = True
 
-fcsv_names, fsizes = ld.loadAWS1DataList(args[1])
+if args.retrain:
+    refine_existing_model = True
 
-print("Files")
-print(fcsv_names)
-print(fsizes)
+if args.hidden:
+    num_hidden_nodes = args.hidden
+
+if args.layer:
+    num_lstm_layers = args.layer
+
+if args.batch:
+    batch_size = args.batch
+
+if args.epoch:
+    num_training_epochs = args.epoch
+
+if args.seq:
+    len_seq = args.seq
+
+
+dim_vec_in = len(str_vec_in)
+dim_vec_out = len(str_vec_out)
+num_nodes_in = dim_vec_in
+num_nodes_out = dim_vec_out * len_pred
+model_name = "lstm_%dx%d_i%d_o%d_seq%d_epoch%d" % (num_hidden_nodes, num_lstm_layers, num_nodes_in, num_nodes_out, len_seq, num_training_epochs)
+
+print("Model:"+ model_path + model_name + ".ckpd")
+
+fcsv_names, fsizes = ld.loadAWS1DataList(flist)
 
 if not do_train:
-    length_of_sequences = 1
+    len_seq = 1
     batch_size = 1
 
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
 with tf.Graph().as_default():
-    input_ph = tf.placeholder(tf.float32, [None, length_of_sequences, num_nodes_in], name="input")
+    input_ph = tf.placeholder(tf.float32, [None, len_seq, num_nodes_in], name="input")
     supervisor_ph = tf.placeholder(tf.float32, [None, num_nodes_out], name="supervisor")
     output_op, states_op, datas_op = inference(input_ph)
     if do_train:
@@ -113,7 +148,7 @@ with tf.Graph().as_default():
         sess.run(init)
 
         saver = tf.train.Saver()
-        if(refine_existing_training):
+        if(refine_existing_model):
             if(tf.train.checkpoint_exists(model_path+model_name+".ckpd")):
                 saver.restore(sess, model_path + model_name+".ckpd")
             else:
@@ -123,7 +158,7 @@ with tf.Graph().as_default():
 
         if do_train:
             for epoch in range(num_training_epochs):
-                inputs, supervisors = ld.getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, length_of_sequences, len_pred)
+                inputs, supervisors = ld.getAWS1DataBatch(fcsv_names, str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, fsizes, batch_size, len_seq, len_pred)
                 train_dict = {
                     input_ph:      inputs,
                     supervisor_ph: supervisors,
@@ -135,10 +170,10 @@ with tf.Graph().as_default():
                     print("train#%d, train loss: %e" % (epoch, train_loss))
                     summary_writer.add_summary(summary_str, epoch)
                     if (epoch) % 500 == 0:
-                        xse, tse =  ld.getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, length_of_sequences, len_pred, True)
+                        xse, tse =  ld.getAWS1DataBatch(fcsv_names, str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, fsizes, batch_size, len_seq, len_pred, True)
                         calc_accuracy(output_op, xse, tse)
 
-            xse, tse = ld.getAWS1DataBatch(fcsv_names, str_vec_in, str_vec_out, fsizes, batch_size, length_of_sequences, len_pred, True)
+            xse, tse = ld.getAWS1DataBatch(fcsv_names, str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, fsizes, batch_size, len_seq, len_pred, True)
             calc_accuracy(output_op, xse, tse, prints=True)
             datas = sess.run(datas_op)
             saver.save(sess, model_path + model_name + ".ckpd")
@@ -152,11 +187,11 @@ with tf.Graph().as_default():
             print("Loading %s" % fcsv_names[ifile])
             aws1_data = ld.loadAWS1Data(fcsv_names[ifile],str_vec) 
 
-            sdata = [[],[],[],[],[],[]]
-            pdata = [[],[],[],[],[],[]]
+            sdata = [[] for i in range(dim_vec_out)]
+            pdata = [[] for i in range(dim_vec_out)]
 
             while(ifile < len(fcsv_names)):
-                xse, tse = ld.getAWS1BatchSectionSeq(str_vec_in, str_vec_out, len_pred, aws1_data, ipos, isection * 0.25, min(1.0, (isection + 1) * 0.25))
+                xse, tse = ld.getAWS1BatchSectionSeq(str_vec_in, fac_vec_in, str_vec_out, fac_vec_out, len_pred, aws1_data, ipos, isection * 0.25, min(1.0, (isection + 1) * 0.25))
                 if(xse is None and tse is None):
                     time_axis = [i for i in range(len(sdata[0]))]
                     for idata in range(len(sdata)):
@@ -200,8 +235,16 @@ with tf.Graph().as_default():
             loss_total /= float(count)
 
             print("loss_total %f" % loss_total)
-            print("t, rroll, rpitch, ryaw, rcog, sog, rsog")
+            header = "t"
+            for key in str_vec_out:
+                header = header+","+key
+            
+            print(header)
             for i in range(0, len_pred):
-                print("%d,%f,%f,%f,%f,%f,%f" % (i+1, loss[i][0], loss[i][1], loss[i][2], loss[i][3], loss[i][4], loss[i][5]))
+                record = ("%d" % i)
+                for j in range(dim_vec_out):
+                    record = record + (",%f" % loss[i][j])
+                
+                print(record)
 
 sys.exit()
