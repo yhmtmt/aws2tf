@@ -6,6 +6,7 @@ import sys
 import pdb
 import csv
 import ld
+import os
 import argparse
 pdb.set_trace()
 
@@ -55,9 +56,9 @@ def calc_accuracy(output_op, inputs, ts, prints=False):
 # 13 inputs [eng, rud, rev, roll, rroll, pitch, rpitch, yaw, ryaw, cog, rcog, sog, rsog]
 # 6 outputs [rroll, rpitch, ryaw, rcog, sog, rsog]
 str_vec_in = ["eng", "rud", "rev", "roll", "rroll", "pitch", "rpitch", "yaw", "ryaw", "cog", "rcog", "sog", "rsog"]
-str_vec_out = ["rroll", "rpitch", "ryaw", "rcog", "sog", "rsog"]
-fac_vec_in=[1.0/255.0, 1.0/255.0, 1.0/5500, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/360.0, 1.0/180.0, 1.0/15.0, 1.0/5.0]
-fac_vec_out=[1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/15.0, 1.0/5.0]
+str_vec_out = ["rroll", "rpitch", "ryaw", "rcog", "sog", "rsog", "rev"]
+fac_vec_in=[1.0/255.0, 1.0/255.0, 1.0/5500, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/360.0, 1.0/180.0, 1.0/25.0, 1.0/5.0]
+fac_vec_out=[1.0/20.0, 1.0/20.0, 1.0/180.0, 1.0/180.0, 1.0/25.0, 1.0/5.0, 1.0/5500]
 #str_vec_out = ["sog", "rsog"]
 #fac_vec_out=[1.0/15.0, 1.0/5.0]
 
@@ -186,6 +187,7 @@ with tf.Graph().as_default():
             count=0
             print("Loading %s" % fcsv_names[ifile])
             aws1_data = ld.loadAWS1Data(fcsv_names[ifile],str_vec) 
+            os.mkdir(plot_path+model_name)
 
             sdata = [[] for i in range(dim_vec_out)]
             pdata = [[] for i in range(dim_vec_out)]
@@ -195,12 +197,16 @@ with tf.Graph().as_default():
                 if(xse is None and tse is None):
                     time_axis = [i for i in range(len(sdata[0]))]
                     for idata in range(len(sdata)):
+                        ymin = min(np.min(pdata[idata]), np.min(sdata[idata]))
+                        ymax = max(np.max(pdata[idata]), np.max(sdata[idata]))
                         plt.subplot(2,1,1)
                         plt.plot(np.array(time_axis), np.array(pdata[idata]))
-                        plt.subplot(2,1,2)
+                        plt.ylim(ymin, ymax);
+                        plt.subplot(2,1,2)                        
                         plt.plot(np.array(time_axis), np.array(sdata[idata]))
-                        figname=model_name+"-%d-%d-%s" % (ifile, isection, str_vec_out[idata])
-                        plt.savefig(plot_path + figname + ".png")
+                        plt.ylim(ymin, ymax);
+                        figname=str_vec_out[idata]+("-%d-%d" % (ifile, isection))                        
+                        plt.savefig(plot_path + model_name +  "/" + figname + ".png")
                         plt.clf()
 
                     if(isection == 1):
