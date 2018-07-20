@@ -2,6 +2,8 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import re
+import subprocess
 #import pdb
 import csv
 
@@ -289,3 +291,19 @@ def loadAWS1Data(fname, str_vec, tstart=0, tend=sys.float_info.max, wavg=5):
     for key in str_vec:
         aws1_data[key] = aws1_data_full[key]
     return aws1_data
+
+def analyzeAWS1LogFiles(path_aws1_log, log_time=-1): 
+    if (log_time == -1):
+        command=['ls', path_aws1_log]    
+        files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        logs = re.findall("[0-9]{17}", files)
+        ilog = 0
+        for log in logs:
+            command=['t2str', log]
+            str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+            print(("%d:"%ilog)+log + ":" + str_log_time)
+            ilog = ilog + 1
+        print("Select log number:")
+        str_log_number=sys.stdin.readline()
+        log_number=int(str_log_number)
+        print("log %d is selected." % log_number)
