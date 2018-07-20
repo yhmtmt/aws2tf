@@ -2,6 +2,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import os
 import re
 import subprocess
 #import pdb
@@ -293,6 +294,7 @@ def loadAWS1Data(fname, str_vec, tstart=0, tend=sys.float_info.max, wavg=5):
     return aws1_data
 
 def analyzeAWS1LogFiles(path_aws1_log, log_time=-1): 
+    ##### Select log file (in aws time)
     if (log_time == -1):
         command=['ls', path_aws1_log]    
         files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
@@ -306,4 +308,71 @@ def analyzeAWS1LogFiles(path_aws1_log, log_time=-1):
         print("Select log number:")
         str_log_number=sys.stdin.readline()
         log_number=int(str_log_number)
-        print("log %d is selected." % log_number)
+        print("log %d : %s is selected." % (log_number, logs[log_number]))
+        log_time = long(logs[log_number])
+    path_log= "%s/%d"%(path_aws1_log,log_time)
+    print("Check directory.")
+
+    ##### Check channel files
+    channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
+    if(os.path.isdir(path_log)):
+        command = ["ls", path_log]
+        files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        jrs = re.findall(".+.jr", files)
+        found=False
+        for chan in channels:
+            for jr in jrs:
+                if jr == chan+".jr":
+                    found=True
+                    break
+            if found:
+                print(chan+".jr found.")
+
+            else:
+                print(chan+".jr not found.")
+                return
+    
+    ##### Convert .log to .txt 
+    command = ["ls", path_log]
+    files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+    logs_bin = re.findall(".+.log", files)
+    logs_txt = re.findall(".+.txt", files)
+    for log_bin in logs_bin:
+        name_bin,ext = os.path.splitext(log_bin)
+        chan_log = None
+        for chan in channels:            
+            if(re.match(chan, name_bin)):
+                chan_log = chan
+                break
+        if chan_log is None:
+            print("No matching channel for " + log_bin)
+            return                
+
+        found=False
+        for log_txt in logs_txt:
+            name_txt,ext = os.path.splitext(log_txt)
+            if (name_txt == name_bin):
+                found = True
+                break
+        if not found:
+            path_log_bin = path_log+"/"+log_bin
+            command = ["log2txt", chan_log, path_log_bin]
+            print("Converting " + log_bin + " to text.")
+            subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+
+    ##### Scan channel log files
+    command = ["ls", path_log]
+    files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+    logs_txt = re.findall(".+.txt", files)
+
+    for chan in channels:
+        chan_logs = []
+
+        for log_txt in logs_txt:
+            if (re.match(chan, log_txt)):
+                chan_logs.append(log_txt)
+
+        print("log for " + chan + ":")
+        print(chan_logs)
+
+    print("Result is saved at " + path_log + ".")
