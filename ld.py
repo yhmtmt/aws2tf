@@ -5,10 +5,10 @@ import sys
 import os
 import re
 import subprocess
-#import pdb
+import pdb
 import csv
 
-#pdb.set_trace()
+pdb.set_trace()
 def getAWS1DataAt(str_vec, fac_vec, data, idx):
     vec = [data[str_vec[ikey]][idx]*fac_vec[ikey] for ikey in range(len(str_vec))]
     return vec
@@ -365,6 +365,8 @@ def analyzeAWS1LogFiles(path_aws1_log, log_time=-1):
     files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
     logs_txt = re.findall(".+.txt", files)
 
+    chans_logs = {}
+
     for chan in channels:
         chan_logs = []
 
@@ -374,5 +376,159 @@ def analyzeAWS1LogFiles(path_aws1_log, log_time=-1):
 
         print("log for " + chan + ":")
         print(chan_logs)
+        chans_logs[chan] = chan_logs
+
 
     print("Result is saved at " + path_log + ".")
+
+    for log in chans_logs[channels[4]]:
+        analyzeAWS1Engstate(path_log+"/"+log)
+
+def analyzeAWS1Engstate(fname):
+    print("Analyzing " + fname)
+    file = open(fname)
+    header=file.readline()
+    header=header.strip().replace(" ", "").split(',')
+ 
+    # trapid: rpm, trim
+    # tdyn: valt, temp, frate
+    irecord=0
+    itrapid=0 
+    irpm=0
+    itrim=0
+    itdyn=0
+    ivalt=0
+    itemp=0
+    ifrate=0
+
+    for record in header:
+        if(record == "trapid"):
+            itrapid = irecord
+        if(record == "rpm"):
+            irpm = irecord
+        if(record == "trim"):
+            itrim = irecord
+        if(record == "tdyn"):
+            itdyn = irecord
+        if(record == "valt"):
+            ivalt = irecord
+        if(record == "temp"):
+            itemp = irecord
+        if(record == "frate"):
+            ifrate = irecord            
+        irecord+=1
+
+    torg = 0
+    tend = 0
+    trapid_prev = -1
+    trapid_cur = 0
+    tdyn_prev = -1
+    tdyn_cur = 0
+    trapid=[]
+    rpm=[]
+    rpm_max = 0.0
+    rpm_min = 0.0
+    rpm_avg = 0.0
+    trim=[]
+
+    tdyn=[]
+    valt=[]
+    valt_max = 0.0
+    valt_min = 0.0
+    valt_avg = 0.0
+    temp=[]
+    temp_max = 0.0
+    temp_min = 0.0
+    temp_avg = 0.0
+    frate=[]
+    frate_max = 0.0
+    frate_min = 0.0
+    frate_avg = 0.0
+    ntrapid=0
+    dtrapid=0.0
+    dtrapid_max=0.0
+    dtrapid_min=sys.float_info.max
+    ntdyn=0
+    dtdyn=0.0
+    dtdyn_max = 0.0
+    dtdyn_min = sys.float_info.max
+    
+    while True:
+        line = file.readline().strip().split(',')
+        if not line or len(line) == 1:
+            break
+
+        if torg == 0:
+            torg = long(line[0])
+        else:
+            tend = long(line[0])
+
+        trapid_cur = long(line[itrapid]) - torg
+        tdyn_cur = long(line[itdyn]) - torg
+        if(trapid_cur != trapid_prev):
+            # add new record
+            dt = float(trapid_cur - trapid_prev) / 10000000.
+            dtrapid_max = max(dtrapid_max, dt)
+            dtrapid_min = min(dtrapid_min, dt)
+
+            dtrapid+= dt
+            trapid_prev = trapid_cur
+            trapid.append(float(trapid_cur - torg) / 10000000.)
+            rpm.append(float(line[irpm]))
+            trim.append(float(line[itrim]))
+            ntrapid+=1
+
+        if(tdyn_cur != tdyn_prev):
+            # add new record
+            dt = float(tdyn_cur - tdyn_prev) / 10000000.
+            dtdyn_max = max(dtdyn_max, dt)
+            dtdyn_min = min(dtdyn_min, dt)
+            dtdyn+= dt
+            tdyn_prev = tdyn_cur
+            tdyn.append(float(tdyn_cur - torg) / 10000000.)
+            valt.append(float(line[ivalt]))
+            temp.append(float(line[itemp])-273.0)
+            frate.append(float(line[ifrate]))
+            ntdyn+=1
+
+    rpm = np.array(rpm)
+    trim = np.array(trim)
+    valt = np.array(valt)
+    temp = np.array(temp)
+    frate = np.array(frate)
+
+    rpm_max = np.max(rpm)
+    rpm_min = np.min(rpm)
+    rpm_avg = np.average(rpm)
+    trim_max = np.max(trim)
+    trim_min = np.min(trim)
+    trim_avg = np.average(trim)
+    valt_max = np.max(valt)
+    valt_min = np.min(valt)
+    valt_avg = np.average(valt)
+    temp_max = np.max(temp)
+    temp_min = np.min(temp)
+    temp_avg = np.average(temp)
+    frate_max = np.max(frate)
+    frate_min = np.min(frate)
+    frate_avg = np.average(frate)
+
+    dtrapid /= float(ntrapid)
+    dtdyn /= float(ntdyn) 
+    duration = float(tend - torg) / 10000000.
+
+    print("STAT ENGSTATE")
+    print("Rapid info samples: %d" % ntrapid)
+    print("dt max: %f min: %f avg: %f" % (dtrapid_max, dtrapid_min, dtrapid))
+    print("rpm max: %f min: %f avg: %f" % (rpm_max, rpm_min, rpm_avg))
+    print("trim max: %f min: %f avg: %f" % (trim_max, trim_min, trim_avg))
+
+    print("Dynamic info samples: %d" % ntdyn)
+    print("dt max: %f min: %f avg: %f" % (dtdyn_max, dtdyn_min, dtdyn))
+    print("valt max: %f min: %f avg: %f" % (valt_max, valt_min, valt_avg))
+    print("temp max: %f min: %f avg: %f" % (temp_max, temp_min, temp_avg))
+    print("frate max: %f min: %f avg: %f" % (frate_max, frate_min, frate_avg))
+
+    file.close()
+
+analyzeAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
