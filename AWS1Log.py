@@ -126,7 +126,7 @@ class AWS1Log:
         self.engr = data['engr']
         self.engd = data['engd']
         self.strm = data['strm']
-    
+
     def stat(self):
         print("STAT apinst")
         printTimeStat(self.apinst['t'])
@@ -184,6 +184,76 @@ class AWS1Log:
 
         print("STAT strm")
         printTimeStat(self.strm['t'])
+
+    def play(self, ts, te):
+        # seek head for all data section
+        def printTimeHead(name, it, t):
+            if t[1] == 0:
+                print("%s t[<0]") 
+            elif t[0] == t.shape[0] -1:
+                print("%s t[>-1") 
+            else:
+                print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
+        
+        tapinst = self.apinst['t']
+        iapinst = seekAWS1LogTime(tapinst, ts)
+        tuiinst = self.uiinst['t']
+        iuiinst = seekAWS1LogTime(tuiinst, ts)
+        tctrlst = self.ctrlst['t']
+        ictrlst = seekAWS1LogTime(tctrlst, ts)
+        tstpos = self.stpos['t']
+        istpos = seekAWS1LogTime(tstpos, ts)
+        tstvel = self.stvel['t']
+        istvel = seekAWS1LogTime(tstvel, ts)
+        tstatt = self.statt['t']
+        istatt = seekAWS1LogTime(tstatt, ts)
+        tst9dof = self.st9dof['t']
+        i9dof = seekAWS1LogTime(tst9dof, ts)
+        tstdp = self.stdp['t']
+        istdp = seekAWS1LogTime(tstdp, ts)
+        tengr = self.engr['t']
+        iengr = seekAWS1LogTime(tengr, ts)
+        tengd = self.engd['t']
+        iengd = seekAWS1LogTime(tengd, ts) 
+        tstrm = self.strm['t']
+        istrm = seekAWS1LogTime(tstrm, ts)
+
+        printTimeHead("apinst", iapinst, tapinst)
+        printTimeHead("uiinst", iuiinst, tuiinst)
+        printTimeHead("ctrlst", ictrlst, tctrlst)
+        printTimeHead("stpos", istpos, tstpos)
+        printTimeHead("stvel", istvel, tstvel)
+        printTimeHead("statt", istatt, tstatt)
+        printTimeHead("st9dof", i9dof, tst9dof)
+        printTimeHead("stdp", istdp, tstdp)
+        printTimeHead("engr", iengr, tengr)
+        printTimeHead("engd", iengd, tengd)
+        printTimeHead("strm", istrm, tstrm)
+
+def seekAWS1LogTime(tseq,tseek):
+    iend=tseq.shape[0]-1
+    if(tseek > tseq[-1]):
+        return iend, iend
+    elif(tseek < tseq[0]):
+        return 0, 0
+
+    i=tseq.shape[0]/2
+    imin = 0
+    imax = iend
+
+    while True:
+        if (tseq[i] <= tseek): 
+            if(tseq[i+1] > tseek):
+                break
+            else:
+                imin = i
+                i += (imax - i) / 2
+        else:
+            imax = i
+            i -= min(1, (i - imin) / 2)
+
+    return i,i+1
+
 
 def loadAWS1LogFiles(path_aws1_log, log_time=-1): 
     ##### Select log file (in aws time)
@@ -300,25 +370,25 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
 
     #ctrl ap
     for log in chans_logs[channels[1]]:
-        apinst.append(loadAWS1CtrlInst(path_log+"/"+log))
+        apinst.append(loadAWS1CtrlInst(path_log+"/"+log, log_time))
 
     apinst = concatSectionData(apinst)
 
     #ctrl ui
     for log in chans_logs[channels[3]]:
-        uiinst.append(loadAWS1CtrlInst(path_log+"/"+log))
+        uiinst.append(loadAWS1CtrlInst(path_log+"/"+log, log_time))
 
     uiinst = concatSectionData(uiinst)
     
     #ctrl stat
     for log in chans_logs[channels[2]]:
-        ctrlst.append(loadAWS1CtrlStat(path_log+"/"+log))
+        ctrlst.append(loadAWS1CtrlStat(path_log+"/"+log, log_time))
 
     ctrlst = concatSectionData(ctrlst)
 
     #engstate
     for log in chans_logs[channels[4]]:
-        rapid,dynamic=loadAWS1Engstate(path_log+"/"+log)
+        rapid,dynamic=loadAWS1Engstate(path_log+"/"+log, log_time)
         engr.append(rapid)
         engd.append(dynamic)
 
@@ -327,7 +397,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
     
     #state
     for log in chans_logs[channels[5]]:
-        pos,vel,dp,att,s9dof=loadAWS1State(path_log+"/"+log)
+        pos,vel,dp,att,s9dof=loadAWS1State(path_log+"/"+log, log_time)
         stpos.append(pos)
         stvel.append(vel)
         stdp.append(dp)
@@ -343,7 +413,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
         'stpos':stpos, 'stvel':stvel, 'statt':statt, 'st9dof':st9dof, 'stdp':stdp, 
         'engr':engr, 'engd':engd, 'strm':{'t':tstrm, 'strm':strm}}
 
-def loadAWS1Engstate(fname):
+def loadAWS1Engstate(fname, log_time):
     print("Analyzing " + fname)
     file = open(fname)
     header=file.readline()
@@ -377,7 +447,7 @@ def loadAWS1Engstate(fname):
             ifrate = irecord            
         irecord+=1
 
-    torg = 0
+    torg = log_time
     tend = 0
     trapid_prev = 0
     trapid_cur = 0
@@ -417,10 +487,10 @@ def loadAWS1Engstate(fname):
         if not line or len(line) == 1:
             break
 
-        if torg == 0:
-            torg = long(line[0])
-        else:
-            tend = long(line[0])
+        t = long(line[0])  
+        if tend >= t:
+            break
+        tend = t
 
         trapid_cur = long(line[itrapid]) - torg
         tdyn_cur = long(line[itdyn]) - torg
@@ -461,7 +531,7 @@ def loadAWS1Engstate(fname):
     file.close()
     return {'t':trapid, 'rpm':rpm, 'trim':trim} ,{'t':tdyn, 'valt':valt, 'temp':temp, 'frate':frate}
 
-def loadAWS1State(fname):
+def loadAWS1State(fname, log_time):
     print("Analyzing " + fname)
     file = open(fname)
     header = file.readline().strip().replace(" ", "").split(',')
@@ -546,7 +616,7 @@ def loadAWS1State(fname):
 
         irecord += 1
 
-    torg = 0
+    torg = log_time
     tend = 0
     tpos = []
     tatt = []
@@ -608,11 +678,11 @@ def loadAWS1State(fname):
         line = file.readline().strip().split(',')
         if not line or len(line) == 1:
             break
-        
-        if torg == 0:
-            torg = long(line[0])
-        else:
-            tend = long(line[0])
+
+        t = long(line[0])
+        if tend >= t:
+            break
+        tend = t
 
         tpos_cur = long(line[itpos]) - torg
         tatt_cur = long(line[itatt]) - torg
@@ -719,7 +789,7 @@ def loadAWS1State(fname):
         {'t':tatt, 'roll':roll, 'pitch':pitch, 'yaw':yaw, 'droll':droll, 'dpitch':dpitch, 'dyaw':dyaw},
         {'t':t9dofc, 'mx':mx, 'my':my, 'mz':mz, 'ax':ax, 'ay':ay, 'az':az, 'gx':gx, 'gy':gy, 'gz':gz})
         
-def loadAWS1CtrlStat(fname):
+def loadAWS1CtrlStat(fname, log_time):
     print("Analyzing " + fname)
     # t: rud, meng, seng
     file = open(fname)
@@ -740,7 +810,7 @@ def loadAWS1CtrlStat(fname):
         if(record == "seng"):
             iseng = irecord
         irecord+=1
-    torg = 0
+    torg = log_time
     tend = 0
     tprev = 0
     tcur = 0
@@ -757,10 +827,12 @@ def loadAWS1CtrlStat(fname):
         line = file.readline().strip().split(',')
         if not line or len(line) == 1:
             break
-        if torg == 0 :
-            torg = long(line[it])
-        else:
-            tend = long(line[it])
+        ttmp = long(line[it])
+        if tend >= ttmp:
+            break
+
+        tend = ttmp
+
         tcur = long(line[it]) - torg
         if(tcur > tprev):
             dt = float(tcur - tprev) / 10000000.
@@ -782,7 +854,7 @@ def loadAWS1CtrlStat(fname):
 
     return {'t':t, 'meng':meng, 'seng':seng, 'rud':rud}
 
-def loadAWS1CtrlInst(fname):
+def loadAWS1CtrlInst(fname, log_time):
     # t: acs, rud, meng, seng
     print("Analyzing " + fname)
     file = open(fname)
@@ -806,7 +878,7 @@ def loadAWS1CtrlInst(fname):
         if(record == "seng"):
             iseng = irecord
         irecord+=1
-    torg = 0
+    torg = log_time
     tend = 0
     tprev = 0
     tcur = 0
@@ -824,10 +896,12 @@ def loadAWS1CtrlInst(fname):
         line = file.readline().strip().split(',')
         if not line or len(line) == 1:
             break
-        if torg == 0 :
-            torg = long(line[it])
-        else:
-            tend = long(line[it])
+
+        ttmp = long(line[it])
+        if tend >= ttmp:
+            break;
+        tend = ttmp
+
         tcur = long(line[it]) - torg
         if(tcur > tprev):
             dt = float(tcur - tprev) / 10000000.
@@ -856,4 +930,4 @@ def loadAWS1CtrlInst(fname):
 log = AWS1Log()
 log.load("/mnt/c/cygwin64/home/yhmtm/aws/log")
 log.stat()
-
+log.play(100,200)
