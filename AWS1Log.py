@@ -187,53 +187,6 @@ class AWS1Log:
 
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
-        def printTimeHead(name, it, t):
-            if it[1] == 0:
-                print("%s t[<0]") 
-            elif it[0] == t.shape[0] -1:
-                print("%s t[>-1") 
-            else:
-                print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
-        
-        def seekNextDataIndex(tnext, it, t):
-            if it[1] == 0:
-                if t[0] > tnext:
-                    return it
-                if t[0] <= tnext and t[1] > tnext:
-                    return [0,1]
-            elif it[0] == t.shape[0] - 1:
-                return it
-            else: 
-                if t[it[0]] <= tnext and t[it[1]] > tnext:
-                    return it
-                elif t[it[1]] <= tnext and t[it[1]+1] > tnext:
-                    return [it[1],it[1]+1]
-            return seekAWS1LogTime(t, tnext)
-
-        def listAWS1DataSection(keys, data):
-            lst = []
-            for key in keys:
-                lst.append(data[key])
-            return lst
-
-        def itpltAWS1DataVec(ldata, t, ts, it):
-            vec = np.zeros(shape=len(ldata),dtype=float)
-            idt = 0
-            for data in ldata:
-                d0 = ldata[idt][it[0]]
-                d1 = ldata[idt][it[1]]
-                t0 = ts[it[0]]
-                t1 = ts[it[1]]
-                vec[idt] = (d1 * (t - t0)  + d0 * (t1 - t)) / (t1 - t0)
-                idt += 1
-            return vec
-
-        def printAWS1DataVec(name, keys, vdata):
-            strRec = name
-            for idt in range(len(keys)):
-                strRec += " %s:%f," % (keys[idt], vdata[idt])
-            print strRec
-
         lapinst = listAWS1DataSection(par_cinst, self.apinst)
         tapinst = self.apinst['t']
         iapinst = seekAWS1LogTime(tapinst, ts)
@@ -267,9 +220,10 @@ class AWS1Log:
         tstrm = self.strm['t']
         istrm = seekAWS1LogTime(tstrm, ts)
         strm = self.strm['strm']   
-        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, istrm[0] - 1)
+        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
+        ret,frm = strm.read()
         ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
-        while ifrm != istrm[0]:
+        while ifrm != istrm[1]:
             ret,frm = strm.read()
             ifrm += 1
         
@@ -331,20 +285,93 @@ class AWS1Log:
         
             istrm = seekNextDataIndex(tcur, istrm, tstrm)
             ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
-            if ifrm < istrm[0]:                
-                while ifrm != istrm[0]:
+            if ifrm < istrm[1]:                
+                while ifrm != istrm[1]:
                     ret,frm = strm.read() 
                     ifrm += 1
             
             cv2.imshow('frame', frm)
             key = cv2.waitKey(int(dt*1000))
             if key == 27:
-                cv2.destroyAllWindow()
+                cv2.destroyAllWindows()
                 break
             tcur += dt
-            
 
-def seekAWS1LogTime(tseq,tseek):
+    def plot(self, ts=0, te=sys.float_info.max, path='./'):
+        lapinst = listAWS1DataSection(par_cinst, self.apinst)
+        tapinst = self.apinst['t']
+        iapinst = seekAWS1LogTime(tapinst, ts)
+        iapinstf = seekAWS1LogTime(tapinst, te)
+        luiinst = listAWS1DataSection(par_cinst, self.uiinst)
+        tuiinst = self.uiinst['t']
+        iuiinst = seekAWS1LogTime(tuiinst, ts)
+        iuiinstf = seekAWS1LogTime(tuiinst, te)
+        lctrlst = listAWS1DataSection(par_cstat, self.ctrlst)
+        tctrlst = self.ctrlst['t']
+        ictrlst = seekAWS1LogTime(tctrlst, ts)
+        ictrlstf = seekAWS1LogTime(tctrlst, te)
+        lstpos = listAWS1DataSection(par_stpos, self.stpos)
+        tstpos = self.stpos['t']
+        istpos = seekAWS1LogTime(tstpos, ts)
+        istposf = seekAWS1LogTime(tstpos, te)
+        lstvel = listAWS1DataSection(par_stvel, self.stvel)
+        tstvel = self.stvel['t']
+        istvel = seekAWS1LogTime(tstvel, ts)
+        istvelf = seekAWS1LogTime(tstvel, te)
+        lstatt = listAWS1DataSection(par_statt, self.statt)
+        tstatt = self.statt['t']
+        istatt = seekAWS1LogTime(tstatt, ts)
+        istattf = seekAWS1LogTime(tstatt, te)
+        lst9dof = listAWS1DataSection(par_9dof, self.st9dof)
+        tst9dof = self.st9dof['t']
+        i9dof = seekAWS1LogTime(tst9dof, ts)
+        i9doff = seekAWS1LogTime(tst9dof, te)
+        lstdp = listAWS1DataSection(par_stdp, self.stdp)
+        tstdp = self.stdp['t']
+        istdp = seekAWS1LogTime(tstdp, ts)
+        istdpf = seekAWS1LogTime(tstdp, te)
+        lengr = listAWS1DataSection(par_engr, self.engr)
+        tengr = self.engr['t']
+        iengr = seekAWS1LogTime(tengr, ts)
+        iengrf = seekAWS1LogTime(tengr, te)
+        lengd = listAWS1DataSection(par_engd, self.engd)
+        tengd = self.engd['t']
+        iengd = seekAWS1LogTime(tengd, ts) 
+        iengdf = seekAWS1LogTime(tengd, te) 
+        tstrm = self.strm['t']
+        istrm = seekAWS1LogTime(tstrm, ts)
+        istrmf = seekAWS1LogTime(tstrm, te) 
+        strm = self.strm['strm']   
+        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
+        ret,frm = strm.read()
+        ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
+        while ifrm != istrm[1]:
+            ret,frm = strm.read()
+            ifrm += 1
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+        def plotAWS1DataSection(keys, ldata, ts, i0, i1):
+            idt=0
+            for key in keys:
+                plt.plot(ts[i0:i1], ldata[idt][i0:i1])
+                idt+=1
+                figname=key+".png"
+                plt.savefig(path+"/"+figname)
+                plt.clf()
+                
+        plotAWS1DataSection(par_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
+        plotAWS1DataSection(par_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
+        plotAWS1DataSection(par_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
+        plotAWS1DataSection(par_stpos, lstpos, tstpos, istpos[0], istposf[1])
+        plotAWS1DataSection(par_stvel, lstvel, tstvel, istvel[0], istvelf[1])
+        plotAWS1DataSection(par_statt, lstatt, tstatt, istatt[0], istattf[1])
+        plotAWS1DataSection(par_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
+        plotAWS1DataSection(par_stdp, lstdp, tstdp, istdp[0], istdpf[1])
+        plotAWS1DataSection(par_engr, lengr, tengr, iengr[0], iengrf[1])
+        plotAWS1DataSection(par_engd, lengd, tengd, iengd[0], iengdf[1])
+
+def seekAWS1LogTime(tseq,tseek):        
     iend=tseq.shape[0]-1
     if(tseek > tseq[-1]):
         return iend, iend
@@ -368,6 +395,52 @@ def seekAWS1LogTime(tseq,tseek):
 
     return i,i+1
 
+def printTimeHead(name, it, t):
+    if it[1] == 0:
+        print("%s t[<0]") 
+    elif it[0] == t.shape[0] -1:
+        print("%s t[>-1") 
+    else:
+        print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
+
+def seekNextDataIndex(tnext, it, t):
+    if it[1] == 0:
+        if t[0] > tnext:
+            return it
+        if t[0] <= tnext and t[1] > tnext:
+            return [0,1]
+    elif it[0] == t.shape[0] - 1:
+        return it
+    else: 
+        if t[it[0]] <= tnext and t[it[1]] > tnext:
+            return it
+        elif t[it[1]] <= tnext and t[it[1]+1] > tnext:
+            return [it[1],it[1]+1]
+    return seekAWS1LogTime(t, tnext)
+
+def listAWS1DataSection(keys, data):
+    lst = []
+    for key in keys:
+        lst.append(data[key])
+    return lst
+
+def itpltAWS1DataVec(ldata, t, ts, it):
+    vec = np.zeros(shape=len(ldata),dtype=float)
+    idt = 0
+    for data in ldata:
+        d0 = ldata[idt][it[0]]
+        d1 = ldata[idt][it[1]]
+        t0 = ts[it[0]]
+        t1 = ts[it[1]]
+        vec[idt] = (d1 * (t - t0)  + d0 * (t1 - t)) / (t1 - t0)
+        idt += 1
+    return vec
+
+def printAWS1DataVec(name, keys, vdata):
+    strRec = name
+    for idt in range(len(keys)):
+        strRec += " %s:%f," % (keys[idt], vdata[idt])
+    print strRec
 
 def loadAWS1LogFiles(path_aws1_log, log_time=-1): 
     ##### Select log file (in aws time)
@@ -1044,4 +1117,5 @@ def loadAWS1CtrlInst(fname, log_time):
 log = AWS1Log()
 log.load("/mnt/c/cygwin64/home/yhmtm/aws/log")
 log.stat()
+log.plot(20,200, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
 log.play(20,200)
