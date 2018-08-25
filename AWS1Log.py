@@ -6,21 +6,35 @@ import subprocess   # for command execution
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.basemap import Basemap
+from io import BytesIO
+from PIL import Image
+import requests
 import cv2
 import ldAWS1Video as ldv
 
 pdb.set_trace()
 
 par_engr=['rpm','trim']
+str_engr=[["Engine Rev", "RPM"], ["Engine Trim", "None"]]
 par_engd=['valt','temp','frate']
+str_engd=[["Alternator Output", "V"], ["Engine Temperature", "DegC"], ["Fuel Consumption", "L/h"]]
 par_stpos=['lat','lon','alt']
+str_stpos=[["Latitude", "Deg"], ["Longitude", "Deg"], ["Altitude", "m"]]
 par_stvel=['cog','sog', 'dcog']
+str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Acceleration Over Ground", "kts/s"]]
 par_stdp=['depth']
+str_stdp=[["Depth","m"]]
 par_statt=['roll','pitch','yaw','droll', 'dpitch', 'dyaw']
+str_statt=[["Roll","Deg"],["Pitch","Deg"],["Yaw","Deg"],["Roll Rate", "Deg/s"],["Pitch Rate", "Deg/s"],["Yaw Rate", "Deg/s"]]
 par_9dof=['mx','my','mz','ax','ay','az','gx','gy','gz']
+str_9dof=[["Magnetic Field in X", "None"],["Magnetic Field in Y", "None"],["Magnetic Field in Z", "None"],
+            ["Acceleration in X", "None"],  ["Acceleration in Y", "None"],  ["Acceleration in Z", "None"],
+            ["Angular Velocity in X", "None"],["Angular Velocity in Y", "None"],["Angular Velocity in Z","None"]]
 par_cstat=['meng','seng','rud']
+str_cstat=[["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 par_cinst=['acs','meng','seng','rud']
+str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 
 def calcTimeStat(tvec):
     dtvec = diffAWS1Data(tvec)
@@ -127,63 +141,134 @@ class AWS1Log:
         self.engd = data['engd']
         self.strm = data['strm']
 
-    def stat(self):
+    def stat(self, ts=0.0, te=sys.float_info.max, path='./'):
+        lapinst = listAWS1DataSection(par_cinst, self.apinst)
+        tapinst = self.apinst['t']
+        iapinst = seekAWS1LogTime(tapinst, ts)
+        iapinstf = seekAWS1LogTime(tapinst, te)
+        luiinst = listAWS1DataSection(par_cinst, self.uiinst)
+        tuiinst = self.uiinst['t']
+        iuiinst = seekAWS1LogTime(tuiinst, ts)
+        iuiinstf = seekAWS1LogTime(tuiinst, te)
+        lctrlst = listAWS1DataSection(par_cstat, self.ctrlst)
+        tctrlst = self.ctrlst['t']
+        ictrlst = seekAWS1LogTime(tctrlst, ts)
+        ictrlstf = seekAWS1LogTime(tctrlst, te)
+        lstpos = listAWS1DataSection(par_stpos, self.stpos)
+        tstpos = self.stpos['t']
+        istpos = seekAWS1LogTime(tstpos, ts)
+        istposf = seekAWS1LogTime(tstpos, te)
+        lstvel = listAWS1DataSection(par_stvel, self.stvel)
+        tstvel = self.stvel['t']
+        istvel = seekAWS1LogTime(tstvel, ts)
+        istvelf = seekAWS1LogTime(tstvel, te)
+        lstatt = listAWS1DataSection(par_statt, self.statt)
+        tstatt = self.statt['t']
+        istatt = seekAWS1LogTime(tstatt, ts)
+        istattf = seekAWS1LogTime(tstatt, te)
+        lst9dof = listAWS1DataSection(par_9dof, self.st9dof)
+        tst9dof = self.st9dof['t']
+        i9dof = seekAWS1LogTime(tst9dof, ts)
+        i9doff = seekAWS1LogTime(tst9dof, te)
+        lstdp = listAWS1DataSection(par_stdp, self.stdp)
+        tstdp = self.stdp['t']
+        istdp = seekAWS1LogTime(tstdp, ts)
+        istdpf = seekAWS1LogTime(tstdp, te)
+        lengr = listAWS1DataSection(par_engr, self.engr)
+        tengr = self.engr['t']
+        iengr = seekAWS1LogTime(tengr, ts)
+        iengrf = seekAWS1LogTime(tengr, te)
+        lengd = listAWS1DataSection(par_engd, self.engd)
+        tengd = self.engd['t']
+        iengd = seekAWS1LogTime(tengd, ts) 
+        iengdf = seekAWS1LogTime(tengd, te) 
+        tstrm = self.strm['t']
+        istrm = seekAWS1LogTime(tstrm, ts)
+        istrmf = seekAWS1LogTime(tstrm, te) 
+        strm = self.strm['strm']   
+        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
+        ret,frm = strm.read()
+        ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
+        while ifrm != istrm[1]:
+            ret,frm = strm.read()
+            ifrm += 1
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+
         print("STAT apinst")
-        printTimeStat(self.apinst['t'])
+        printTimeStat(tapinst)
         for key in par_cinst:
             printStat(key, self.apinst[key])
 
         print("STAT uiinst")
-        printTimeStat(self.uiinst['t'])
+        printTimeStat(tuiinst)
         for key in par_cinst:
             printStat(key, self.uiinst[key])
 
         print("STAT ctrlstat")
-        printTimeStat(self.ctrlst['t'])
+        printTimeStat(tctrlst)
         for key in par_cstat:
             printStat(key, self.ctrlst[key])
 
         print("STAT stpos")
-        printTimeStat(self.stpos['t'])
+        printTimeStat(tstpos)
         for key in par_stpos:
             printStat(key, self.stpos[key])
 
         print("STAT stvel")
-        printTimeStat(self.stvel['t'])
+        printTimeStat(tstvel)
         for key in par_stvel:
             printStat(key, self.stvel[key])
 
         print("STAT statt")
-        printTimeStat(self.statt['t'])
+        printTimeStat(tstatt)
         for key in par_statt:
             printStat(key, self.statt[key])
 
         print("STAT 9dof")
-        printTimeStat(self.st9dof['t'])
+        printTimeStat(tst9dof)
         for key in par_9dof:
             printStat(key, self.st9dof[key])
 
         print("STAT stdp")
-        printTimeStat(self.stdp['t'])
+        printTimeStat(tstdp)
         for key in par_stdp:
             printStat(key, self.stdp[key])
 
         print("STAT engr")
-        printTimeStat(self.engr['t'])
+        printTimeStat(tengr)
         for key in par_engr:
             printStat(key, self.engr[key])
 
         print("STAT engd")
-        printTimeStat(self.engd['t'])
+        printTimeStat(tengd)
         for key in par_engd:
             printStat(key, self.engd[key])
 
-        ftotal = integrateAWS1Data(self.engd['t'], self.engd['frate'])
+        ftotal = integrateAWS1Data(tengd, self.engd['frate'])
         ftotal /= 3600.0
         print("Estimated fuel consumption: %f" % ftotal) 
 
         print("STAT strm")
-        printTimeStat(self.strm['t'])
+        printTimeStat(tstrm)
+
+        def plotAWS1DataRelation(parx, pary, strx, stry, rx, ry):
+            figname=parx+pary+".png"
+            plt.scatter(rx,ry)
+            plt.xlabel(strx[0]+" ["+strx[1]+"]")
+            plt.ylabel(stry[0]+" ["+stry[1]+"]")
+            plt.savefig(path+"/"+figname)
+            plt.clf()
+
+        # meng/rpm, 100 < rud < 154
+        trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+        trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
+        trng = intersectTimeRanges(trrud, trmeng)
+        trng = intersectTimeRanges(trng, [[ts,te]])
+        rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
+        plotAWS1DataRelation("meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
+
 
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
@@ -351,25 +436,146 @@ class AWS1Log:
 
         if not os.path.exists(path):
             os.mkdir(path)
-        def plotAWS1DataSection(keys, ldata, ts, i0, i1):
+        def plotAWS1DataSection(keys, str, ldata, ts, i0, i1):
             idt=0
             for key in keys:
                 plt.plot(ts[i0:i1], ldata[idt][i0:i1])
+                ystr = str[idt][0] + " [" + str[idt][1] + "]"
                 idt+=1
                 figname=key+".png"
+                plt.xlabel("Time [sec]")
+                plt.ylabel(ystr)
                 plt.savefig(path+"/"+figname)
                 plt.clf()
-                
-        plotAWS1DataSection(par_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
-        plotAWS1DataSection(par_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
-        plotAWS1DataSection(par_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
-        plotAWS1DataSection(par_stpos, lstpos, tstpos, istpos[0], istposf[1])
-        plotAWS1DataSection(par_stvel, lstvel, tstvel, istvel[0], istvelf[1])
-        plotAWS1DataSection(par_statt, lstatt, tstatt, istatt[0], istattf[1])
-        plotAWS1DataSection(par_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
-        plotAWS1DataSection(par_stdp, lstdp, tstdp, istdp[0], istdpf[1])
-        plotAWS1DataSection(par_engr, lengr, tengr, iengr[0], iengrf[1])
-        plotAWS1DataSection(par_engd, lengd, tengd, iengd[0], iengdf[1])
+
+        plotAWS1DataSection(par_cinst, str_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
+        plotAWS1DataSection(par_cinst, str_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
+        plotAWS1DataSection(par_cstat, str_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
+        plotAWS1DataSection(par_stpos, str_stpos, lstpos, tstpos, istpos[0], istposf[1])
+        plotAWS1DataSection(par_stvel, str_stvel, lstvel, tstvel, istvel[0], istvelf[1])
+        plotAWS1DataSection(par_statt, str_statt, lstatt, tstatt, istatt[0], istattf[1])
+        plotAWS1DataSection(par_9dof, str_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
+        plotAWS1DataSection(par_stdp, str_stdp, lstdp, tstdp, istdp[0], istdpf[1])
+        plotAWS1DataSection(par_engr, str_engr, lengr, tengr, iengr[0], iengrf[1])
+        plotAWS1DataSection(par_engd, str_engd, lengd, tengd, iengd[0], iengdf[1])
+
+        minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
+        maxlat = max(lstpos[0][istpos[0]:istposf[1]]) 
+        minlon = min(lstpos[1][istpos[0]:istposf[1]]) 
+        maxlon = max(lstpos[1][istpos[0]:istposf[1]]) 
+        midlat = (maxlat + minlat) * 0.5
+        midlon = (maxlon + minlon) * 0.5
+        rlat = maxlat - minlat
+        rlon = maxlon - minlon
+        minlat = midlat - rlat
+        maxlat = midlat + rlat
+        minlon = midlon - rlon
+        maxlon = midlon + rlon
+
+        url = "https://www.openstreetmap.org/#map=13"
+        payload={
+            'mapnik_format':'png',
+            'mapnik_scale': 25000,
+            'minlon' : minlon,
+            'maxlon' : maxlon,
+            'minlat' : minlat,
+            'maxlat' : maxlat,
+            'format' : 'mapnik'
+        }
+ #       res = requests.post(url, payload)
+ #       print(res.headers)
+ #       mapimg = Image.open(BytesIO(res.content))
+
+        bmap = Basemap(projection='merc',
+                llcrnrlat=minlat, urcrnrlat=maxlat, llcrnrlon=minlon, urcrnrlon=maxlon,
+                lat_ts=0, resolution=None)
+#        bmap.imshow(mapimg, origin='upper')
+        x,y = bmap(lstpos[1][istpos[0]:istposf[1]], lstpos[0][istpos[0]:istposf[1]])
+        bmap.plot(x,y)
+        plt.savefig(path+"/"+"map.png")
+        plt.clf()
+
+def intersectTimeRanges(trng0, trng1):
+    trng = []
+    for tr0 in trng0:
+        for tr1 in trng1:
+            if(tr0[0] <= tr1[0]): # s0
+                if(tr1[0] <= tr0[1]): # s0s1
+                    if(tr0[1] >= tr1[1]): # s0s1e1s1
+                        trng.append([tr1[0],tr1[1]])
+                    else: # s0s1e0e1
+                        trng.append([tr1[0],tr0[1]])
+                else: # s0t0s1t1
+                    pass
+            else: # s1
+                if(tr0[0] <= tr1[1]):# s1s0
+                    if(tr1[1] <= tr0[1]): # s1s0e1e0
+                        trng.append([tr0[0], tr1[1]])
+                    else: # s1s0e0e1
+                        trng.append([tr0[0], tr0[1]])
+                else: # s1e1s0e0                    
+                    pass
+    return trng
+
+def relateTimeRangeVecs(tx, ty, vx, vy, trng):
+    rx = []
+    ry = []
+    for tr in trng:
+        ix0s,ix0e = seekAWS1LogTime(tx, tr[0])
+        ix1s,ix1e = seekAWS1LogTime(tx, tr[1])
+        for ix in range(ix0e, ix1s):
+            iys,iye = seekAWS1LogTime(ty, tx[ix])
+            t = tx[ix]
+            t0 = ty[iys]
+            t1 = ty[iye]
+            x = vx[ix]
+            y = (vy[iye] * (t - t0) + vy[iys] * (t1 - t))  / (t1 - t0)
+            rx.append(x)
+            ry.append(y)
+    return np.array(rx),np.array(ry)
+
+def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
+    ts=-1
+    te=-1
+    tranges=[]
+    vmin = vec[0]
+    vmax = vec[0]
+
+    for ivec in range(1, vec.shape[0]):
+        vmin = min(vec[ivec], vmin)
+        vmax = max(vec[ivec], vmax)
+        if vmax - vmin <= th:
+            if(ts == -1):
+                ts = t[ivec-1]
+                te = t[ivec]
+            else:
+                te = t[ivec]
+        else:
+            if(ts >= 0):
+                if (te - ts > emgn + smgn):
+                    tranges.append([ts+smgn, te-emgn])
+            ts = te = -1
+            vmax = vmin = vec[ivec]
+
+    return tranges
+
+def findInRangeTimeRanges(t, vec, vmax=sys.float_info.max, vmin=-sys.float_info.min):
+    ts=-1
+    te=-1
+    tranges = []
+
+    for ivec in range(0, vec.shape[0]):
+        if vmin <= vec[ivec] and vmax >= vec[ivec]:
+            if ts == -1:
+                ts = te = t[ivec]
+            else:
+                te = t[ivec]
+        else:
+            if(ts > 0):
+                tranges.append([ts, te])
+            ts = te = -1
+
+    return tranges
 
 def seekAWS1LogTime(tseq,tseek):        
     iend=tseq.shape[0]-1
@@ -391,7 +597,7 @@ def seekAWS1LogTime(tseq,tseek):
                 i += (imax - i) / 2
         else:
             imax = i
-            i -= min(1, (i - imin) / 2)
+            i -= max(1, (i - imin) / 2)
 
     return i,i+1
 
@@ -913,7 +1119,7 @@ def loadAWS1State(fname, log_time):
             ax.append(float(line[iax]))
             ay.append(float(line[iay]))
             az.append(float(line[iaz]))
-            gx.append(float(line[igz]))
+            gx.append(float(line[igx]))
             gy.append(float(line[igy]))
             gz.append(float(line[igz]))
             t9dofc_prev = t9dofc_cur
@@ -1116,6 +1322,6 @@ def loadAWS1CtrlInst(fname, log_time):
 #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
 log = AWS1Log()
 log.load("/mnt/c/cygwin64/home/yhmtm/aws/log")
-log.stat()
-log.plot(20,200, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
-log.play(20,200)
+log.stat(0,5000, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
+log.plot(0,1000, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
+log.play(0, 1000)
