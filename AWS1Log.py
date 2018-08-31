@@ -128,7 +128,7 @@ class AWS1Log:
         self.strm = {'t':None, 'strm':None}
 
     def load(self, path_aws1_log, log_time=-1):
-        data=loadAWS1LogFiles(path_aws1_log, log_time)
+        data,log_time=loadAWS1LogFiles(path_aws1_log, log_time)
         self.apinst = data['apinst']
         self.uiinst = data['uiinst']
         self.ctrlst = data['ctrlst']
@@ -140,6 +140,8 @@ class AWS1Log:
         self.engr = data['engr']
         self.engd = data['engd']
         self.strm = data['strm']
+
+        return log_time
 
     def stat(self, ts=0.0, te=sys.float_info.max, path='./'):
         lapinst = listAWS1DataSection(par_cinst, self.apinst)
@@ -804,7 +806,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
 
     return {'apinst':apinst, 'uiinst':uiinst, 'ctrlst':ctrlst, 
         'stpos':stpos, 'stvel':stvel, 'statt':statt, 'st9dof':st9dof, 'stdp':stdp, 
-        'engr':engr, 'engd':engd, 'strm':{'t':tstrm, 'strm':strm}}
+        'engr':engr, 'engd':engd, 'strm':{'t':tstrm, 'strm':strm}}, log_time
 
 def loadAWS1Engstate(fname, log_time):
     print("Analyzing " + fname)
@@ -1321,7 +1323,9 @@ def loadAWS1CtrlInst(fname, log_time):
 
 #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
 log = AWS1Log()
-log.load("/mnt/c/cygwin64/home/yhmtm/aws/log")
-log.stat(0,5000, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
-log.plot(0,1000, "/mnt/c/cygwin64/home/yhmtm/aws/plot")
-log.play(0, 1000)
+awspath="/mnt/d/aws"
+log_time = log.load(awspath+"/log")
+plot_dir=("/plot_%d" % log_time)
+log.stat(0,10000, awspath+plot_dir)
+log.plot(500,550, awspath+plot_dir)
+log.play(500,10000)
