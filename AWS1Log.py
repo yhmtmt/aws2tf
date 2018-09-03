@@ -15,6 +15,9 @@ import ldAWS1Video as ldv
 
 pdb.set_trace()
 
+channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
+chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
+
 par_engr=['rpm','trim']
 str_engr=[["Engine Rev", "RPM"], ["Engine Trim", "None"]]
 par_engd=['valt','temp','frate']
@@ -586,7 +589,7 @@ def seekAWS1LogTime(tseq,tseek):
     elif(tseek < tseq[0]):
         return 0, 0
 
-    i=tseq.shape[0]/2
+    i=tseq.shape[0]//2
     imin = 0
     imax = iend
 
@@ -596,10 +599,10 @@ def seekAWS1LogTime(tseq,tseek):
                 break
             else:
                 imin = i
-                i += (imax - i) / 2
+                i += (imax - i) // 2
         else:
             imax = i
-            i -= max(1, (i - imin) / 2)
+            i -= max(1, (i - imin) // 2)
 
     return i,i+1
 
@@ -648,60 +651,59 @@ def printAWS1DataVec(name, keys, vdata):
     strRec = name
     for idt in range(len(keys)):
         strRec += " %s:%f," % (keys[idt], vdata[idt])
-    print strRec
+    print (strRec)
 
-def loadAWS1LogFiles(path_aws1_log, log_time=-1): 
-    ##### Select log file (in aws time)
-    if (log_time == -1):
-        command=['ls', path_aws1_log]    
-        files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-        logs = re.findall("[0-9]{17}", files)
-        ilog = 0
-        for log in logs:
-            command=['t2str', log]
-            str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-            print(("%d:"%ilog)+log + ":" + str_log_time)
-            ilog = ilog + 1
-        print("Select log number:")
-        str_log_number=sys.stdin.readline()
-        log_number=int(str_log_number)
-        print("log %d : %s is selected." % (log_number, logs[log_number]))
-        log_time = long(logs[log_number])
+
+def selectAWS1Log(path_aws1_log):
+    command=['ls', path_aws1_log]
+    files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+    logs = re.findall(rb"[0-9]{17}", files)
+    ilog = 0
+    for log in logs:
+        command=['t2str', log]
+        str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        print(("%d:"%ilog)+log.decode('utf-8') + ":" + str_log_time.decode('utf-8'))
+        ilog = ilog + 1
+    print("Select log number:")
+    str_log_number=sys.stdin.readline()
+    log_number=int(str_log_number)
+    print("log %d : %s is selected." % (log_number, logs[log_number]))
+    log_time = int(logs[log_number])
     path_log= "%s/%d"%(path_aws1_log,log_time)
     print("Check directory.")
 
     ##### Check channel files
-    channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
-    chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
-
     if(os.path.isdir(path_log)):
         command = ["ls", path_log]
         files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-        jrs = re.findall(".+.jr", files)
+        jrs = re.findall(rb".+.jr", files)
         found=False
         for chan in channels:
             for jr in jrs:
-                if jr == chan+".jr":
+                if jr.decode('utf-8') == chan+".jr":
                     found=True
                     break
             if found:
                 print(chan+".jr found.")
-
             else:
                 print(chan+".jr not found.")
-                return
-    
+                return -1
+    return log_time
+
+
+def loadAWS1LogFiles(path_aws1_log, log_time=-1):
+    path_log= "%s/%d"%(path_aws1_log,log_time)
     ##### Convert .log to .txt 
     command = ["ls", path_log]
     files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-    logs_bin = re.findall(".+.log", files)
-    logs_txt = re.findall(".+.txt", files)
+    logs_bin = re.findall(rb".+.log", files)
+    logs_txt = re.findall(rb".+.txt", files)
     for log_bin in logs_bin:
         name_bin,ext = os.path.splitext(log_bin)
         chan_log = None
         chan_type = None
         for ichan in range(len(channels)):            
-            if(re.match(channels[ichan], name_bin)):
+            if(re.match(channels[ichan], name_bin.decode('utf-8'))):
                 chan_log = channels[ichan]
                 chan_type = chantypes[ichan]
                 break
@@ -724,7 +726,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
     ##### Scan channel log files
     command = ["ls", path_log]
     files = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-    logs_txt = re.findall(".+.txt", files)
+    logs_txt = re.findall(rb".+.txt", files)
 
     chans_logs = {}
 
@@ -732,7 +734,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
         chan_logs = []
 
         for log_txt in logs_txt:
-            if (re.match(chan, log_txt)):
+            if (re.match(chan, log_txt.decode('utf-8'))):
                 chan_logs.append(log_txt)
 
         print("log for " + chan + ":")
@@ -765,25 +767,25 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
 
     #ctrl ap
     for log in chans_logs[channels[1]]:
-        apinst.append(loadAWS1CtrlInst(path_log+"/"+log, log_time))
+        apinst.append(loadAWS1CtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
 
     apinst = concatSectionData(apinst)
 
     #ctrl ui
     for log in chans_logs[channels[3]]:
-        uiinst.append(loadAWS1CtrlInst(path_log+"/"+log, log_time))
+        uiinst.append(loadAWS1CtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
 
     uiinst = concatSectionData(uiinst)
     
     #ctrl stat
     for log in chans_logs[channels[2]]:
-        ctrlst.append(loadAWS1CtrlStat(path_log+"/"+log, log_time))
+        ctrlst.append(loadAWS1CtrlStat(path_log+"/"+log.decode('utf-8'), log_time))
 
     ctrlst = concatSectionData(ctrlst)
 
     #engstate
     for log in chans_logs[channels[4]]:
-        rapid,dynamic=loadAWS1Engstate(path_log+"/"+log, log_time)
+        rapid,dynamic=loadAWS1Engstate(path_log+"/"+log.decode('utf-8'), log_time)
         engr.append(rapid)
         engd.append(dynamic)
 
@@ -792,7 +794,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
     
     #state
     for log in chans_logs[channels[5]]:
-        pos,vel,dp,att,s9dof=loadAWS1State(path_log+"/"+log, log_time)
+        pos,vel,dp,att,s9dof=loadAWS1State(path_log+"/"+log.decode('utf-8'), log_time)
         stpos.append(pos)
         stvel.append(vel)
         stdp.append(dp)
@@ -882,13 +884,13 @@ def loadAWS1Engstate(fname, log_time):
         if not line or len(line) == 1:
             break
 
-        t = long(line[0])  
+        t = int(line[0])  
         if tend >= t:
             break
         tend = t
 
-        trapid_cur = long(line[itrapid]) - torg
-        tdyn_cur = long(line[itdyn]) - torg
+        trapid_cur = int(line[itrapid]) - torg
+        tdyn_cur = int(line[itdyn]) - torg
         if(trapid_cur > trapid_prev):
             # add new record
             dt = float(trapid_cur - trapid_prev) / 10000000.
@@ -1074,16 +1076,16 @@ def loadAWS1State(fname, log_time):
         if not line or len(line) == 1:
             break
 
-        t = long(line[0])
+        t = int(line[0])
         if tend >= t:
             break
         tend = t
 
-        tpos_cur = long(line[itpos]) - torg
-        tatt_cur = long(line[itatt]) - torg
-        t9dofc_cur = long(line[it9dofc]) - torg
-        tvel_cur = long(line[itvel]) - torg
-        tdp_cur = long(line[itdp]) - torg
+        tpos_cur = int(line[itpos]) - torg
+        tatt_cur = int(line[itatt]) - torg
+        t9dofc_cur = int(line[it9dofc]) - torg
+        tvel_cur = int(line[itvel]) - torg
+        tdp_cur = int(line[itdp]) - torg
         if tpos_cur > tpos_prev:
             dt = float(tpos_cur - tpos_prev) / 10000000.
             dtpos_max = max(dtpos_max, dt)
@@ -1222,13 +1224,13 @@ def loadAWS1CtrlStat(fname, log_time):
         line = file.readline().strip().split(',')
         if not line or len(line) == 1:
             break
-        ttmp = long(line[it])
+        ttmp = int(line[it])
         if tend >= ttmp:
             break
 
         tend = ttmp
 
-        tcur = long(line[it]) - torg
+        tcur = int(line[it]) - torg
         if(tcur > tprev):
             dt = float(tcur - tprev) / 10000000.
             dtmax = max(dtmax, dt)
@@ -1292,12 +1294,12 @@ def loadAWS1CtrlInst(fname, log_time):
         if not line or len(line) == 1:
             break
 
-        ttmp = long(line[it])
+        ttmp = int(line[it])
         if tend >= ttmp:
             break;
         tend = ttmp
 
-        tcur = long(line[it]) - torg
+        tcur = int(line[it]) - torg
         if(tcur > tprev):
             dt = float(tcur - tprev) / 10000000.
             dtmax = max(dtmax, dt)
@@ -1323,9 +1325,11 @@ def loadAWS1CtrlInst(fname, log_time):
 
 #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
 log = AWS1Log()
-awspath="/mnt/d/aws"
-log_time = log.load(awspath+"/log")
+#awspath="/mnt/d/aws"
+awspath="/mnt/c/cygwin64/home/yhmtm/aws"
+log_time = selectAWS1Log(awspath+"/log")
+log_time = log.load(awspath+"/log", log_time)
 plot_dir=("/plot_%d" % log_time)
 log.stat(0,10000, awspath+plot_dir)
-log.plot(500,550, awspath+plot_dir)
-log.play(500,10000)
+log.plot(0,550, awspath+plot_dir)
+log.play(0,10000)
