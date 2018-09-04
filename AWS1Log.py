@@ -658,6 +658,8 @@ def selectAWS1Log(path_aws1_log):
     command=['ls', path_aws1_log]
     files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
     logs = re.findall(rb"[0-9]{17}", files)
+    if len(logs) == 0:
+        return -1
     ilog = 0
     for log in logs:
         command=['t2str', log]
@@ -1323,13 +1325,15 @@ def loadAWS1CtrlInst(fname, log_time):
     file.close()
     return {'t':t, 'acs':acs, 'meng':meng, 'seng':seng, 'rud':rud}
 
-#loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
-log = AWS1Log()
-#awspath="/mnt/d/aws"
-awspath="/mnt/c/cygwin64/home/yhmtm/aws"
-log_time = selectAWS1Log(awspath+"/log")
-log_time = log.load(awspath+"/log", log_time)
-plot_dir=("/plot_%d" % log_time)
-log.stat(0,10000, awspath+plot_dir)
-log.plot(0,550, awspath+plot_dir)
-log.play(0,10000)
+
+if __name__ == '__main__':
+    #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
+    log = AWS1Log()
+    #awspath="/mnt/d/aws"
+    awspath="/mnt/c/cygwin64/home/yhmtm/aws"
+    log_time = selectAWS1Log(awspath+"/log")
+    log_time = log.load(awspath+"/log", log_time)
+    plot_dir=("/plot_%d" % log_time)
+    log.stat(0,10000, awspath+plot_dir)
+    log.plot(0,550, awspath+plot_dir)
+    log.play(0,10000)
