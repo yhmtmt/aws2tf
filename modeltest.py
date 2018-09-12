@@ -2,15 +2,14 @@ import numpy as np
 import tensorflow as tf
 import cv2 as cv
 
-config=tf.ConfigProto()
-config.gpu_options.allow_growth=True
+config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 
 # Read the graph.
 with tf.gfile.FastGFile('ssd_mobilenet_v1_coco_2017_11_17/frozen_inference_graph.pb', 'rb') as f:
     graph_def = tf.GraphDef()
     graph_def.ParseFromString(f.read())
 
-with tf.Session() as sess:
+with tf.Session(config=config) as sess:
     # Restore session
     sess.graph.as_default()
     tf.import_graph_def(graph_def, name='')
