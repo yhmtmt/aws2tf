@@ -4,6 +4,7 @@ import pdb          # for debug
 import re           # for regular expression
 import subprocess   # for command execution 
 import random
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
@@ -14,6 +15,105 @@ import cv2
 import ldAWS1Video as ldv
 
 pdb.set_trace()
+# Ship coordinate
+# Axes X: bow
+#      Y: right
+#      Z: bottom
+#
+# Camera coordinate
+# Axes X: right
+#      Y: down
+#      Z: front
+
+# Mr: rotation around X (starboard down -> positive roll)
+# 1   0  0
+# 0  cr -sr
+# 0  sr cr
+
+# Mp: rotation around Y (bow up -> positive pitch)
+# cp 0 sp
+# 0  1  0
+# -sp 0  cp
+
+# My: rotation around Z (bow right -> positive yaw)
+# cy -sy 0
+# sy  cy 0
+# 0   0  1
+
+# Raw: AHRS attitude to the world (A=ArApAy)
+# Ras: AHRS attitude to the ship (B=BrBpBy)
+#    idealy B=I, where I is identity
+#    Note that ship attitude to the world is B^tA
+# Rcs: Camera attitude relative to ship (C=CrCpCy)
+# P: Projection matrix
+
+# Mw: point in world coordinate  
+# Ma: point in AHRS coordinate Ma=Ras(Ms-Ta)
+# Ta: AHRS position on the ship (ship coordinate)
+# Ms: point in ship coordinate  Ms=Ras^tA(Mw-Ts)
+# Ts: Ship position in the world (world coordinate)
+# Mc: point in camera coordinate Mc=C(Ms-Tc)
+# Tc: Camera position on the ship (ship coordinate)
+# m: point in image coordinate, sm=PMc (s is scale factor)
+# Note: the camera has sensor resolution 1936,1216 but the ROI is 1920,1080 placed at the image center. (-8, -68) should be added to (cx, cy)
+# Note: camera parameters are fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6
+Campar = [ 1.4138767346226757e+003, 1.4139390383098676e+003,
+       9.6319441141882567e+002, 5.7628496708437842e+002,
+       -9.0039760307679337e-002, 1.1452599777072203e-001, 0., 0.,
+       3.4755734835861862e-001, 9.0919984164909914e-002,
+       -5.8278957247821707e-002, 4.9679287555607182e-001 ]
+Pcam=np.array([[Campar[0],0.0,Campar[2]-8.0],[0.0,Campar[1],Campar[3]-68.0],[0.0,0.0,1.0]])
+distCoeffs=np.array(Campar[4:12])
+mapx,mapy=cv2.initUndistortRectifyMap(Pcam, distCoeffs, np.eye(3),Pcam, (1920,1080), cv2.CV_32FC1)
+
+rearth=6378136.6
+
+def distHorizon(height):
+    ''' 
+    calculates distance to the horizon for given height of the observer
+    The units of the argument and return value is in meter
+    '''
+    return 3.57e3*math.sqrt(height)
+
+def genHorizonPoints(height):
+    thstep=(10.0/180.0)*math.pi
+    D = distHorizon(height) * rearth / (rearth + height)
+    Z = height * rearth / (rearth + height)
+    angles=np.array([thstep * i for i in range(0,36)])
+    c = D * np.cos(angles)
+    s = D * np.sin(angles)                    
+    return np.stack([c,s,[Z]*36])    
+
+def genRmat(roll, pitch, yaw):
+    ''' 
+    calculate rotation matrix for given [roll pitch yaw] 
+    Matrix is multiplied in the order RrRpRy
+    Note that the unit of the arguments should be radian.
+    '''
+    theta = np.array([roll,pitch,yaw])
+    s = np.sin(theta)
+    c = np.cos(theta)
+
+    Rr=np.array([[1,0,0],[0,c[0],-s[0]],[0,s[0],c[0]]])
+    Rp=np.array([[c[1],0,s[1]],[0,1,0],[-s[1],0,c[1]]])
+    Ry=np.array([[c[2],-s[2],0],[s[2],c[2],0],[0,0,1]])
+    return np.matmul(Rr,np.matmul(Rp,Ry))
+
+#RrRpRy
+#(RrRpRy)^t=(RpRy)^tRr^t=Ry^tRp^tRr^t
+Raw=np.eye(3)
+Ras=np.eye(3)
+Rcs=genRmat(0.5*math.pi, 0.0, 0.5*math.pi)
+
+Ta=np.array([2.0,0,0])
+Tc=np.array([0,0,2.0])
+Ts=np.array([0,0,0])
+horizon=genHorizonPoints(Tc[2])
+R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
+#Camera position in the world:T=R^tTc+Ts
+T=np.matmul(R.transpose(), Tc) + Ts
+#sm=P(RMw-T)
+m=np.matmul(Pcam, np.matmul(R, horizon) - T)
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
 chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
@@ -331,6 +431,8 @@ class AWS1Log:
 
         tcur = ts
 
+        budist=False
+        
         while tcur < te:
             print ("Time %fsec" % tcur)
             iapinst = seekNextDataIndex(tcur, iapinst, tapinst)
@@ -374,17 +476,31 @@ class AWS1Log:
             printAWS1DataVec("engr", par_engd, vengd)
         
             istrm = seekNextDataIndex(tcur, istrm, tstrm)
-            ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
+            ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
             if ifrm < istrm[1]:                
                 while ifrm != istrm[1]:
                     ret,frm = strm.read() 
                     ifrm += 1
-            
-            cv2.imshow('frame', frm)
+            if(budist):
+                frm_ud=cv2.remap(frm,mapx,mapy,cv2.INTER_LINEAR)
+            else:
+                frm_ud = frm
+                
+            font=cv2.FONT_HERSHEY_SIMPLEX
+            txt="Time %5.2f Frame %06d" % (tcur, ifrm)
+            if(budist):                
+                txt+=" Undist"
+            cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
+            txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
+            cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)            
+            cv2.imshow('frame', frm_ud)
             key = cv2.waitKey(int(dt*1000))
             if key == 27:
                 cv2.destroyAllWindows()
                 break
+            elif key == ord('u'):
+                budist=~budist
+                
             tcur += dt
 
     def plot(self, ts=0, te=sys.float_info.max, path='./'):
