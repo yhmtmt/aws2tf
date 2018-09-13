@@ -11,6 +11,8 @@ from mpl_toolkits.basemap import Basemap
 from io import BytesIO
 from PIL import Image
 import requests
+import tensorflow as tf
+from utils import label_map_util
 import cv2
 import ldAWS1Video as ldv
 
@@ -113,7 +115,7 @@ R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
 #Camera position in the world:T=R^tTc+Ts
 T=np.matmul(R.transpose(), Tc) + Ts
 #sm=P(RMw-T)
-m=np.matmul(Pcam, np.matmul(R, horizon) - T)
+#m=np.matmul(Pcam, np.matmul(R, horizon) - T)
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
 chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
@@ -431,6 +433,22 @@ class AWS1Log:
 
         tcur = ts
 
+        # Setting up object detector
+        label_map=label_map_util.load_labelmap('mscoco_label_map.pbtxt')
+        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=90, use_display_name=True)
+        category_index=label_map_util.create_category_index(categories)
+        
+        config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+
+        with tf.gfile.FastGFile('frozen_inference_graph.pb', 'rb') as f:
+            graph_def=tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+        
+        sess=tf.Session(config=config)
+        sess.graph.as_default()
+        tf.import_graph_def(graph_def, name='')
+        
+        bodet=True
         budist=False
         
         while tcur < te:
@@ -485,7 +503,38 @@ class AWS1Log:
                 frm_ud=cv2.remap(frm,mapx,mapy,cv2.INTER_LINEAR)
             else:
                 frm_ud = frm
+
+            if(bodet):
+                rows=frm_ud.shape[0]
+                cols=frm_ud.shape[1]
+                inp = cv2.resize(frm_ud, (960, 540))
+                inp=inp[:,:,[2,1,0]]
+                out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
+                                sess.graph.get_tensor_by_name('detection_scores:0'),
+                                sess.graph.get_tensor_by_name('detection_boxes:0'),
+                                sess.graph.get_tensor_by_name('detection_classes:0')],
+                               feed_dict={'image_tensor:0':inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
                 
+                num_detections = int(out[0][0])
+                for i in range(num_detections):
+                    classId = int(out[3][0][i])
+                    if classId in category_index.keys():
+                        oname=category_index[classId]['name']
+                    else:
+                        oname='Unknown'
+                    score = float(out[1][0][i])
+                    bbox=[float(v) for v in out[2][0][i]]
+                    
+                    if score > 0.3:
+                        x = bbox[1] * cols
+                        y = bbox[0] * rows
+                        right = bbox[3] * cols
+                        bottom = bbox[2] * rows
+                        cv2.rectangle(frm_ud, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        cv2.putText(frm_ud, oname, (int(x), int(y)+20), font ,1, (0, 255, 0), 2, cv2.LINE_AA)
+                
+                        
             font=cv2.FONT_HERSHEY_SIMPLEX
             txt="Time %5.2f Frame %06d" % (tcur, ifrm)
             if(budist):                
@@ -1445,8 +1494,8 @@ def loadAWS1CtrlInst(fname, log_time):
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
     log = AWS1Log()
-    #awspath="/mnt/d/aws"
-    awspath="/mnt/c/cygwin64/home/yhmtm/aws"
+    awspath="/mnt/d/aws"
+    #awspath="/mnt/c/cygwin64/home/yhmtm/aws"
     log_time = selectAWS1Log(awspath+"/log")
     log_time = log.load(awspath+"/log", log_time)
     plot_dir=("/plot_%d" % log_time)
