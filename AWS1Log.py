@@ -248,7 +248,7 @@ class AWS1Log:
 
         return log_time
 
-    def stat(self, ts=0.0, te=sys.float_info.max, path='./'):
+    def stat(self, ts=0.0, te=sys.float_info.max):
         lapinst = listAWS1DataSection(par_cinst, self.apinst)
         tapinst = self.apinst['t']
         iapinst = seekAWS1LogTime(tapinst, ts)
@@ -299,9 +299,6 @@ class AWS1Log:
         while ifrm != istrm[1]:
             ret,frm = strm.read()
             ifrm += 1
-
-        if not os.path.exists(path):
-            os.mkdir(path)
 
         print("STAT apinst")
         printTimeStat(tapinst)
@@ -359,23 +356,6 @@ class AWS1Log:
 
         print("STAT strm")
         printTimeStat(tstrm)
-
-        def plotAWS1DataRelation(parx, pary, strx, stry, rx, ry):
-            figname=parx+pary+".png"
-            plt.scatter(rx,ry)
-            plt.xlabel(strx[0]+" ["+strx[1]+"]")
-            plt.ylabel(stry[0]+" ["+stry[1]+"]")
-            plt.savefig(path+"/"+figname)
-            plt.clf()
-
-        # meng/rpm, 100 < rud < 154
-        trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
-        trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
-        trng = intersectTimeRanges(trrud, trmeng)
-        trng = intersectTimeRanges(trng, [[ts,te]])
-        rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
-        plotAWS1DataRelation("meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
-
 
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
@@ -495,61 +475,66 @@ class AWS1Log:
         
             istrm = seekNextDataIndex(tcur, istrm, tstrm)
             ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
+            bfrmNew=False
             if ifrm < istrm[1]:                
                 while ifrm != istrm[1]:
-                    ret,frm = strm.read() 
+                    ret,frm = strm.read()
+                    bfrmNew=True
                     ifrm += 1
-            if(budist):
-                frm_ud=cv2.remap(frm,mapx,mapy,cv2.INTER_LINEAR)
-            else:
-                frm_ud = frm
 
-            if(bodet):
-                rows=frm_ud.shape[0]
-                cols=frm_ud.shape[1]
-                inp = cv2.resize(frm_ud, (960, 540))
-                inp=inp[:,:,[2,1,0]]
-                out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
+            if(bfrmNew):
+                if(budist):
+                    frm_ud=cv2.remap(frm,mapx,mapy,cv2.INTER_LINEAR)
+                else:
+                    frm_ud = frm
+
+                if(bodet):
+                    rows=frm_ud.shape[0]
+                    cols=frm_ud.shape[1]
+                    #inp = cv2.resize(frm_ud, (960, 540))
+                    inp=frm_ud.copy()
+                    inp=inp[:,:,[2,1,0]]
+                    out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
                                 sess.graph.get_tensor_by_name('detection_scores:0'),
                                 sess.graph.get_tensor_by_name('detection_boxes:0'),
                                 sess.graph.get_tensor_by_name('detection_classes:0')],
                                feed_dict={'image_tensor:0':inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
                 
-                num_detections = int(out[0][0])
-                for i in range(num_detections):
-                    classId = int(out[3][0][i])
-                    if classId in category_index.keys():
-                        oname=category_index[classId]['name']
-                    else:
-                        oname='Unknown'
-                    score = float(out[1][0][i])
-                    bbox=[float(v) for v in out[2][0][i]]
+                    num_detections = int(out[0][0])
+                    for i in range(num_detections):
+                        classId = int(out[3][0][i])
+                        if classId in category_index.keys():
+                            oname=category_index[classId]['name']
+                        else:
+                            oname='Unknown'
+                        score = float(out[1][0][i])
+                        bbox=[float(v) for v in out[2][0][i]]
                     
-                    if score > 0.3:
-                        x = bbox[1] * cols
-                        y = bbox[0] * rows
-                        right = bbox[3] * cols
-                        bottom = bbox[2] * rows
-                        cv2.rectangle(frm_ud, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
-                        font = cv2.FONT_HERSHEY_SIMPLEX
-                        cv2.putText(frm_ud, oname, (int(x), int(y)+20), font ,1, (0, 255, 0), 2, cv2.LINE_AA)
+                        if score > 0.3:
+                            x = bbox[1] * cols
+                            y = bbox[0] * rows
+                            right = bbox[3] * cols
+                            bottom = bbox[2] * rows
+                            cv2.rectangle(frm_ud, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
+                            font = cv2.FONT_HERSHEY_SIMPLEX
+                            cv2.putText(frm_ud, oname, (int(x), int(y)+20), font ,1, (0, 255, 0), 2, cv2.LINE_AA)            
+                font=cv2.FONT_HERSHEY_SIMPLEX
+                txt="Time %5.2f Frame %06d" % (tcur, ifrm)
                 
-                        
-            font=cv2.FONT_HERSHEY_SIMPLEX
-            txt="Time %5.2f Frame %06d" % (tcur, ifrm)
-            if(budist):                
-                txt+=" Undist"
-            cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
-            txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
-            cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)            
-            cv2.imshow('frame', frm_ud)
-            key = cv2.waitKey(int(dt*1000))
-            if key == 27:
-                cv2.destroyAllWindows()
-                break
-            elif key == ord('u'):
-                budist=~budist
-                
+                if(budist):                
+                    txt+=" Undist"
+                cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
+                txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
+                cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)            
+                cv2.imshow('frame', frm_ud)
+                key = cv2.waitKey(int(dt*1000))
+                if key == 27:
+                    cv2.destroyAllWindows()
+                    break
+                elif key == ord('u'):
+                    budist=not(budist)
+                elif key == ord('d'):
+                    bodet=not(bodet)
             tcur += dt
 
     def plot(self, ts=0, te=sys.float_info.max, path='./'):
@@ -665,6 +650,23 @@ class AWS1Log:
         plt.savefig(path+"/"+"map.png")
         plt.clf()
 
+
+        def plotAWS1DataRelation(parx, pary, strx, stry, rx, ry):
+            figname=parx+pary+".png"
+            plt.scatter(rx,ry)
+            plt.xlabel(strx[0]+" ["+strx[1]+"]")
+            plt.ylabel(stry[0]+" ["+stry[1]+"]")
+            plt.savefig(path+"/"+figname)
+            plt.clf()
+
+        # meng/rpm, 100 < rud < 154
+        trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+        trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
+        trng = intersectTimeRanges(trrud, trmeng)
+        trng = intersectTimeRanges(trng, [[ts,te]])
+        rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
+        plotAWS1DataRelation("meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
+        
 def intersectTimeRanges(trng0, trng1):
     trng = []
     for tr0 in trng0:
@@ -1265,8 +1267,6 @@ def loadAWS1State(fname, log_time):
             alt.append(float(line[ialt]))
             npos += 1
         if tatt_cur > tatt_prev:
-            if natt == 57947:
-                print("break")
             dt = float(tatt_cur - tatt_prev) / 10000000.
             dtatt_max = max(dtatt_max, dt)
             dtatt_min = min(dtatt_min, dt)
