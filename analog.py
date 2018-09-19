@@ -23,7 +23,7 @@ te=args.te
 log = AWS1Log.AWS1Log()
 
 if log_time == -1:
-    log_time = AWS1Log.selectAWS1Log(path_log)
+    log_time = AWS1Log.ldl.selectAWS1Log(path_log)
 
 if log_time == -1:
     print ("No log is found, or specified.")
