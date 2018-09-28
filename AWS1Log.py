@@ -100,6 +100,16 @@ def genRmat(roll, pitch, yaw):
     Ry=np.array([[c[2],-s[2],0],[s[2],c[2],0],[0,0,1]])
     return np.matmul(Rr,np.matmul(Rp,Ry))
 
+def projPoints(Pcam, R, T, M):
+    '''
+    Pcam: projection matrix
+    R: Rotation matrix
+    M: 3D Points
+    '''
+    m=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, M)) - T))
+    m=np.divide(m[0:2],m[2])
+    return m
+
 #RrRpRy
 #(RrRpRy)^t=(RpRy)^tRr^t=Ry^tRp^tRr^t
 Raw=np.eye(3)
@@ -114,7 +124,7 @@ R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
 #Camera position in the world:T=R^tTc+Ts
 T=np.matmul(R.transpose(), Tc) + Ts
 #sm=P(RMw-T)
-m=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, horizon)) - T))
+m=projPoints(Pcam, R, T, horizon)
 
 par_engr=['rpm','trim']
 str_engr=[["Engine Rev", "RPM"], ["Engine Trim", "None"]]
