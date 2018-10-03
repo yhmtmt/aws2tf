@@ -107,9 +107,9 @@ def projPoints(Pcam, R, T, M):
     R: Rotation matrix
     M: 3D Points
     '''
-    m=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, M)) - T))
-    m=np.divide(m[0:2],m[2])
-    return m
+    sm=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, M)) - T))
+    m=np.divide(sm[0:2],sm[2])
+    return np.vstack((m,sm[2]))
 
 #RrRpRy
 #(RrRpRy)^t=(RpRy)^tRr^t=Ry^tRp^tRr^t
@@ -365,47 +365,47 @@ class AWS1Log:
         
         while tcur < te:
             print ("Time %fsec" % tcur)
-            iapinst = seekNextDataIndex(tcur, iapinst, tapinst)
-            vapinst = itpltAWS1DataVec(lapinst, tcur, tapinst, iapinst)
-            printAWS1DataVec("apinst", par_cinst, vapinst)
+            iapinst = ldl.seekNextDataIndex(tcur, iapinst, tapinst)
+            vapinst = ldl.itpltAWS1DataVec(lapinst, tcur, tapinst, iapinst)
+            ldl.printAWS1DataVec("apinst", par_cinst, vapinst)
 
-            iuiinst = seekNextDataIndex(tcur, iuiinst, tuiinst)
-            vuiinst = itpltAWS1DataVec(luiinst, tcur, tuiinst, iuiinst)
-            printAWS1DataVec("uiinst", par_cinst, vuiinst)
+            iuiinst = ldl.seekNextDataIndex(tcur, iuiinst, tuiinst)
+            vuiinst = ldl.itpltAWS1DataVec(luiinst, tcur, tuiinst, iuiinst)
+            ldl.printAWS1DataVec("uiinst", par_cinst, vuiinst)
 
-            ictrlst = seekNextDataIndex(tcur, ictrlst, tctrlst)
-            vctrlst = itpltAWS1DataVec(lctrlst, tcur, tctrlst, ictrlst)
-            printAWS1DataVec("ctrlst", par_cstat, vctrlst)
+            ictrlst = ldl.seekNextDataIndex(tcur, ictrlst, tctrlst)
+            vctrlst = ldl.itpltAWS1DataVec(lctrlst, tcur, tctrlst, ictrlst)
+            ldl.printAWS1DataVec("ctrlst", par_cstat, vctrlst)
 
-            istpos = seekNextDataIndex(tcur, istpos, tstpos)
-            vstpos = itpltAWS1DataVec(lstpos, tcur, tstpos, istpos)
-            printAWS1DataVec("stpos", par_stpos, vstpos)
+            istpos = ldl.seekNextDataIndex(tcur, istpos, tstpos)
+            vstpos = ldl.itpltAWS1DataVec(lstpos, tcur, tstpos, istpos)
+            ldl.printAWS1DataVec("stpos", par_stpos, vstpos)
 
-            istvel = seekNextDataIndex(tcur, istvel, tstvel)
-            vstvel = itpltAWS1DataVec(lstvel, tcur, tstvel, istvel)
-            printAWS1DataVec("stvel", par_stvel, vstvel)
+            istvel = ldl.seekNextDataIndex(tcur, istvel, tstvel)
+            vstvel = ldl.itpltAWS1DataVec(lstvel, tcur, tstvel, istvel)
+            ldl.printAWS1DataVec("stvel", par_stvel, vstvel)
 
-            istatt = seekNextDataIndex(tcur, istatt, tstatt)
-            vstatt = itpltAWS1DataVec(lstatt, tcur, tstatt, istatt)
-            printAWS1DataVec("statt", par_statt, vstatt)
+            istatt = ldl.seekNextDataIndex(tcur, istatt, tstatt)
+            vstatt = ldl.itpltAWS1DataVec(lstatt, tcur, tstatt, istatt)
+            ldl.printAWS1DataVec("statt", par_statt, vstatt)
 
-            i9dof = seekNextDataIndex(tcur, i9dof, tst9dof)
-            vst9dof = itpltAWS1DataVec(lst9dof, tcur, tst9dof, i9dof)
-            printAWS1DataVec("st9dof", par_9dof, vst9dof)
+            i9dof = ldl.seekNextDataIndex(tcur, i9dof, tst9dof)
+            vst9dof = ldl.itpltAWS1DataVec(lst9dof, tcur, tst9dof, i9dof)
+            ldl.printAWS1DataVec("st9dof", par_9dof, vst9dof)
 
-            istdp = seekNextDataIndex(tcur, istdp, tstdp)
-            vstdp = itpltAWS1DataVec(lstdp, tcur, tstdp, istdp)
-            printAWS1DataVec("stdp", par_stdp, vstdp)
+            istdp = ldl.seekNextDataIndex(tcur, istdp, tstdp)
+            vstdp = ldl.itpltAWS1DataVec(lstdp, tcur, tstdp, istdp)
+            ldl.printAWS1DataVec("stdp", par_stdp, vstdp)
 
-            iengr = seekNextDataIndex(tcur, iengr, tengr)
-            vengr = itpltAWS1DataVec(lengr, tcur, tengr, iengr)
-            printAWS1DataVec("engr", par_engr, vengr)
+            iengr = ldl.seekNextDataIndex(tcur, iengr, tengr)
+            vengr = ldl.itpltAWS1DataVec(lengr, tcur, tengr, iengr)
+            ldl.printAWS1DataVec("engr", par_engr, vengr)
 
-            iengd = seekNextDataIndex(tcur, iengd, tengd)
-            vengd = itpltAWS1DataVec(lengd, tcur, tengd, iengd)
-            printAWS1DataVec("engr", par_engd, vengd)
+            iengd = ldl.seekNextDataIndex(tcur, iengd, tengd)
+            vengd = ldl.itpltAWS1DataVec(lengd, tcur, tengd, iengd)
+            ldl.printAWS1DataVec("engr", par_engd, vengd)
         
-            istrm = seekNextDataIndex(tcur, istrm, tstrm)
+            istrm = ldl.seekNextDataIndex(tcur, istrm, tstrm)
             ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
             bfrmNew=False
             if ifrm < istrm[1]:                
@@ -457,7 +457,23 @@ class AWS1Log:
                     txt+=" Undist"
                 cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
                 txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
-                cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)            
+                cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)
+                # draw horizon
+                fac=math.pi/180.0
+                Raw=genRmat(vstatt[0]*fac,vstatt[1]*fac,vstatt[2]*fac)
+                R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
+                T=np.matmul(R.transpose(), Tc) + Ts
+               
+                m=projPoints(Pcam, R, T, horizon)
+                imin=imax=0
+                for i in range(36):
+                    pt0=[int(m[0][i]), int(m[1][i])]
+                    
+                    if m[2][i] > 0 and pt0[0] > 0 and pt0[0] < 1920 and pt0[1] > 0 and pt0[1] < 1080:
+                        cv2.line(frm_ud,(pt0[0],pt0[1]), (pt0[0],pt0[1]-10), (0, 255, 0), 3)
+                        txt="%02d" % i
+                        cv2.putText(frm_ud, txt, (pt0[0], pt0[1] - 20), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                
                 cv2.imshow('frame', frm_ud)
                 key = cv2.waitKey(int(dt*1000))
                 if key == 27:
