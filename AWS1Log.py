@@ -106,9 +106,9 @@ def projPoints(Pcam, R, T, M):
     R: Rotation matrix
     M: 3D Points
     '''
-    m=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, M)) - T))
-    m=np.divide(m[0:2],m[2])
-    return m
+    sm=np.matmul(Pcam, np.transpose(np.transpose(np.dot(R, M)) - T))
+    m=np.divide(sm[0:2],sm[2])
+    return np.vstack((m,sm[2]))
 
 #RrRpRy
 #(RrRpRy)^t=(RpRy)^tRr^t=Ry^tRp^tRr^t
@@ -456,7 +456,23 @@ class AWS1Log:
                     txt+=" Undist"
                 cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
                 txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
-                cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)            
+                cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)
+                # draw horizon
+                fac=math.pi/180.0
+                Raw=genRmat(vstatt[0]*fac,vstatt[1]*fac,vstatt[2]*fac)
+                R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
+                T=np.matmul(R.transpose(), Tc) + Ts
+               
+                m=projPoints(Pcam, R, T, horizon)
+                imin=imax=0
+                for i in range(36):
+                    pt0=[int(m[0][i]), int(m[1][i])]
+                    
+                    if m[2][i] > 0 and pt0[0] > 0 and pt0[0] < 1920 and pt0[1] > 0 and pt0[1] < 1080:
+                        cv2.line(frm_ud,(pt0[0],pt0[1]), (pt0[0],pt0[1]-10), (0, 255, 0), 3)
+                        txt="%02d" % i
+                        cv2.putText(frm_ud, txt, (pt0[0], pt0[1] - 20), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                
                 cv2.imshow('frame', frm_ud)
                 key = cv2.waitKey(int(dt*1000))
                 if key == 27:
