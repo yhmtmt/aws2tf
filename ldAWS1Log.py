@@ -306,9 +306,9 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
                 found = True
                 break
         if not found:
-            path_log_bin = path_log+"/"+log_bin
+            path_log_bin = path_log+"/"+log_bin.decode('utf-8')
             command = ["log2txt", chan_type, path_log_bin]
-            print("Converting " + log_bin + " to text.")
+            print("Converting " + log_bin.decode('utf-8') + " to text.")
             subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
 
     ##### Scan channel log files

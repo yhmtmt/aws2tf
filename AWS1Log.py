@@ -99,7 +99,7 @@ def genRmat(roll, pitch, yaw):
     Rr=np.array([[1,0,0],[0,c[0],-s[0]],[0,s[0],c[0]]])
     Rp=np.array([[c[1],0,s[1]],[0,1,0],[-s[1],0,c[1]]])
     Ry=np.array([[c[2],-s[2],0],[s[2],c[2],0],[0,0,1]])
-    return np.matmul(Rr,np.matmul(Rp,Ry))
+    return np.matmul(Ry,np.matmul(Rp,Rr))
 
 def projPoints(Pcam, R, T, M):
     '''
@@ -121,7 +121,7 @@ Ta=np.array([2.0,0,0])
 Tc=np.array([0,0,2.0])
 Ts=np.array([0,0,0])
 horizon=genHorizonPoints(Tc[2])
-R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
+R=np.matmul(np.matmul(Raw, Ras), Rcs).transpose()
 #Camera position in the world:T=R^tTc+Ts
 T=np.matmul(R.transpose(), Tc) + Ts
 #sm=P(RMw-T)
@@ -461,7 +461,7 @@ class AWS1Log:
                 # draw horizon
                 fac=math.pi/180.0
                 Raw=genRmat(vstatt[0]*fac,vstatt[1]*fac,vstatt[2]*fac)
-                R=np.matmul(Rcs, np.matmul(Ras.transpose(),Raw))
+                R=np.matmul(np.matmul(Raw, Ras), Rcs).transpose()
                 T=np.matmul(R.transpose(), Tc) + Ts
                
                 m=projPoints(Pcam, R, T, horizon)
