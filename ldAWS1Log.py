@@ -4,6 +4,7 @@ import re
 import subprocess
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 import ldAWS1Video as ldv
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
@@ -908,3 +909,23 @@ def loadAWS1CtrlInst(fname, log_time):
 
     file.close()
     return {'t':t, 'acs':acs, 'meng':meng, 'seng':seng, 'rud':rud}
+
+def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
+    idt=0
+    for key in keys:
+        plt.plot(ts[i0:i1], ldata[idt][i0:i1])
+        ystr = str[idt][0] + " [" + str[idt][1] + "]"
+        idt+=1
+        figname=key+".png"
+        plt.xlabel("Time [sec]")
+        plt.ylabel(ystr)
+        plt.savefig(path+"/"+figname)
+        plt.clf()
+                
+def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
+    figname=parx+pary+".png"
+    plt.scatter(rx,ry)
+    plt.xlabel(strx[0]+" ["+strx[1]+"]")
+    plt.ylabel(stry[0]+" ["+stry[1]+"]")
+    plt.savefig(path+"/"+figname)
+    plt.clf()

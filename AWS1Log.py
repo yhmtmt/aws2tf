@@ -539,28 +539,17 @@ class AWS1Log:
 
         if not os.path.exists(path):
             os.mkdir(path)
-        def plotAWS1DataSection(keys, str, ldata, ts, i0, i1):
-            idt=0
-            for key in keys:
-                plt.plot(ts[i0:i1], ldata[idt][i0:i1])
-                ystr = str[idt][0] + " [" + str[idt][1] + "]"
-                idt+=1
-                figname=key+".png"
-                plt.xlabel("Time [sec]")
-                plt.ylabel(ystr)
-                plt.savefig(path+"/"+figname)
-                plt.clf()
 
-        plotAWS1DataSection(par_cinst, str_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
-        plotAWS1DataSection(par_cinst, str_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
-        plotAWS1DataSection(par_cstat, str_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
-        plotAWS1DataSection(par_stpos, str_stpos, lstpos, tstpos, istpos[0], istposf[1])
-        plotAWS1DataSection(par_stvel, str_stvel, lstvel, tstvel, istvel[0], istvelf[1])
-        plotAWS1DataSection(par_statt, str_statt, lstatt, tstatt, istatt[0], istattf[1])
-        plotAWS1DataSection(par_9dof, str_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
-        plotAWS1DataSection(par_stdp, str_stdp, lstdp, tstdp, istdp[0], istdpf[1])
-        plotAWS1DataSection(par_engr, str_engr, lengr, tengr, iengr[0], iengrf[1])
-        plotAWS1DataSection(par_engd, str_engd, lengd, tengd, iengd[0], iengdf[1])
+        ldl.plotAWS1DataSection(path, par_cinst, str_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
+        ldl.plotAWS1DataSection(path, par_cinst, str_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
+        ldl.plotAWS1DataSection(path, par_cstat, str_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
+        ldl.plotAWS1DataSection(path, par_stpos, str_stpos, lstpos, tstpos, istpos[0], istposf[1])
+        ldl.plotAWS1DataSection(path, par_stvel, str_stvel, lstvel, tstvel, istvel[0], istvelf[1])
+        ldl.plotAWS1DataSection(path, par_statt, str_statt, lstatt, tstatt, istatt[0], istattf[1])
+        ldl.plotAWS1DataSection(path, par_9dof, str_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
+        ldl.plotAWS1DataSection(path, par_stdp, str_stdp, lstdp, tstdp, istdp[0], istdpf[1])
+        ldl.plotAWS1DataSection(path, par_engr, str_engr, lengr, tengr, iengr[0], iengrf[1])
+        ldl.plotAWS1DataSection(path, par_engd, str_engd, lengd, tengd, iengd[0], iengdf[1])
 
         minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
         maxlat = max(lstpos[0][istpos[0]:istposf[1]]) 
@@ -598,33 +587,24 @@ class AWS1Log:
         plt.savefig(path+"/"+"map.png")
         plt.clf()
 
-
-        def plotAWS1DataRelation(parx, pary, strx, stry, rx, ry):
-            figname=parx+pary+".png"
-            plt.scatter(rx,ry)
-            plt.xlabel(strx[0]+" ["+strx[1]+"]")
-            plt.ylabel(stry[0]+" ["+stry[1]+"]")
-            plt.savefig(path+"/"+figname)
-            plt.clf()
-
         # meng/rpm, 100 < rud < 154
         trrud = ldl.findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
         trmeng = ldl.findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
         trng = ldl.intersectTimeRanges(trrud, trmeng)
         trng = ldl.intersectTimeRanges(trng, [[ts,te]])
         rx,ry = ldl.relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
-        plotAWS1DataRelation("meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
+        ldl.plotAWS1DataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
 
         # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
         trcog = ldl.findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
         trmeng = ldl.findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
-        trsog = ldl.findStableTimeRanges(tstvel, lstvel[1], smgn=1.0, emgn=0.0, th=1.0)
+        trsog = ldl.findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
         trng = ldl.intersectTimeRanges(trrud, trcog)
         trng = ldl.intersectTimeRanges(trng, trsog)
         trng = ldl.intersectTimeRanges(trng, trmeng)
         trng = ldl.intersectTimeRanges(trng, [[ts,te]])
         rx,ry = ldl.relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
-        plotAWS1DataRelation("sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
+        ldl.plotAWS1DataRelation(path, "sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
 
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
