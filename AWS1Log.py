@@ -134,7 +134,7 @@ str_engd=[["Alternator Output", "V"], ["Engine Temperature", "DegC"], ["Fuel Con
 par_stpos=['lat','lon','alt']
 str_stpos=[["Latitude", "Deg"], ["Longitude", "Deg"], ["Altitude", "m"]]
 par_stvel=['cog','sog', 'dcog']
-str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Acceleration Over Ground", "kts/s"]]
+str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Rate of Cource Change", "deg/s"]]
 par_stdp=['depth']
 str_stdp=[["Depth","m"]]
 par_statt=['roll','pitch','yaw','droll', 'dpitch', 'dyaw']
@@ -615,11 +615,13 @@ class AWS1Log:
         rx,ry = ldl.relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
         plotAWS1DataRelation("meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
 
-        # sog/rpm, 100 < rud < 154
+        # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
         trcog = ldl.findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
+        trmeng = ldl.findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
         trsog = ldl.findStableTimeRanges(tstvel, lstvel[1], smgn=1.0, emgn=0.0, th=1.0)
         trng = ldl.intersectTimeRanges(trrud, trcog)
         trng = ldl.intersectTimeRanges(trng, trsog)
+        trng = ldl.intersectTimeRanges(trng, trmeng)
         trng = ldl.intersectTimeRanges(trng, [[ts,te]])
         rx,ry = ldl.relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
         plotAWS1DataRelation("sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
