@@ -564,23 +564,9 @@ class AWS1Log:
         plt.savefig(path+"/"+"map.png")
         plt.clf()
 
-        # meng/rpm, 100 < rud < 154
-        trrud = ldl.findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
-        trmeng = ldl.findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
-        trng = ldl.intersectTimeRanges(trrud, trmeng)
-        trng = ldl.intersectTimeRanges(trng, [[ts,te]])
-        rx,ry = ldl.relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
+        rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr)
         ldl.plotAWS1DataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
-
-        # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
-        trcog = ldl.findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
-        trmeng = ldl.findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
-        trsog = ldl.findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
-        trng = ldl.intersectTimeRanges(trrud, trcog)
-        trng = ldl.intersectTimeRanges(trng, trsog)
-        trng = ldl.intersectTimeRanges(trng, trmeng)
-        trng = ldl.intersectTimeRanges(trng, [[ts,te]])
-        rx,ry = ldl.relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
+        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr)
         ldl.plotAWS1DataRelation(path, "sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
 
 if __name__ == '__main__':

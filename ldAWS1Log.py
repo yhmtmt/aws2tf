@@ -915,6 +915,27 @@ def getListAndTime(par, data):
     t = data['t']
     return l,t
 
+def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
+    # meng/rpm, 100 < rud < 154
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
+    trng = intersectTimeRanges(trrud, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
+    return rx,ry
+
+def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
+    # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
+    trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
+    trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
+    trng = intersectTimeRanges(trrud, trcog)
+    trng = intersectTimeRanges(trng, trsog)
+    trng = intersectTimeRanges(trng, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
+    return rx,ry
 
 def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
     idt=0
