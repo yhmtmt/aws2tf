@@ -1,6 +1,6 @@
 import sys
 import os
-import pdb          # for debug
+#import pdb          # for debug
 import re           # for regular expression
 import subprocess   # for command execution 
 import random
@@ -16,7 +16,7 @@ from utils import label_map_util
 import cv2
 import ldAWS1Log as ldl
 
-pdb.set_trace()
+#pdb.set_trace()
 # Ship coordinate
 # Axes X: bow
 #      Y: right
@@ -180,47 +180,40 @@ class AWS1Log:
 
         return log_time
 
+    
     def stat(self, ts=0.0, te=sys.float_info.max):
-        lapinst = ldl.listAWS1DataSection(par_cinst, self.apinst)
-        tapinst = self.apinst['t']
+        lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
+        luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)
+        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
+        lstpos,tstpos = ldl.getListAndTime(par_stpos, self.stpos)
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
+        lst9dof,tst9dof = ldl.getListAndTime(par_9dof, self.st9dof)
+        lstdp,tstdp = ldl.getListAndTime(par_stdp, self.stdp)
+        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
+        lengd,tengd = ldl.getListAndTime(par_engd, self.engd)
+        
         iapinst = ldl.seekAWS1LogTime(tapinst, ts)
         iapinstf = ldl.seekAWS1LogTime(tapinst, te)
-        luiinst = ldl.listAWS1DataSection(par_cinst, self.uiinst)
-        tuiinst = self.uiinst['t']
         iuiinst = ldl.seekAWS1LogTime(tuiinst, ts)
         iuiinstf = ldl.seekAWS1LogTime(tuiinst, te)
-        lctrlst = ldl.listAWS1DataSection(par_cstat, self.ctrlst)
-        tctrlst = self.ctrlst['t']
         ictrlst = ldl.seekAWS1LogTime(tctrlst, ts)
         ictrlstf = ldl.seekAWS1LogTime(tctrlst, te)
-        lstpos = ldl.listAWS1DataSection(par_stpos, self.stpos)
-        tstpos = self.stpos['t']
         istpos = ldl.seekAWS1LogTime(tstpos, ts)
         istposf = ldl.seekAWS1LogTime(tstpos, te)
-        lstvel = ldl.listAWS1DataSection(par_stvel, self.stvel)
-        tstvel = self.stvel['t']
         istvel = ldl.seekAWS1LogTime(tstvel, ts)
         istvelf = ldl.seekAWS1LogTime(tstvel, te)
-        lstatt = ldl.listAWS1DataSection(par_statt, self.statt)
-        tstatt = self.statt['t']
         istatt = ldl.seekAWS1LogTime(tstatt, ts)
         istattf = ldl.seekAWS1LogTime(tstatt, te)
-        lst9dof = ldl.listAWS1DataSection(par_9dof, self.st9dof)
-        tst9dof = self.st9dof['t']
         i9dof = ldl.seekAWS1LogTime(tst9dof, ts)
         i9doff = ldl.seekAWS1LogTime(tst9dof, te)
-        lstdp = ldl.listAWS1DataSection(par_stdp, self.stdp)
-        tstdp = self.stdp['t']
         istdp = ldl.seekAWS1LogTime(tstdp, ts)
         istdpf = ldl.seekAWS1LogTime(tstdp, te)
-        lengr = ldl.listAWS1DataSection(par_engr, self.engr)
-        tengr = self.engr['t']
         iengr = ldl.seekAWS1LogTime(tengr, ts)
         iengrf = ldl.seekAWS1LogTime(tengr, te)
-        lengd = ldl.listAWS1DataSection(par_engd, self.engd)
-        tengd = self.engd['t']
         iengd = ldl.seekAWS1LogTime(tengd, ts) 
-        iengdf = ldl.seekAWS1LogTime(tengd, te) 
+        iengdf = ldl.seekAWS1LogTime(tengd, te)
+        
         tstrm = self.strm['t']
         istrm = ldl.seekAWS1LogTime(tstrm, ts)
         istrmf = ldl.seekAWS1LogTime(tstrm, te) 
@@ -282,44 +275,37 @@ class AWS1Log:
         for key in par_engd:
             ldl.printStat(key, self.engd[key])
 
-        ftotal = integrateAWS1Data(tengd, self.engd['frate'])
+        ftotal = ldl.integrateAWS1Data(tengd, self.engd['frate'])
         ftotal /= 3600.0
         print("Estimated fuel consumption: %f" % ftotal) 
 
         print("STAT strm")
         ldl.printTimeStat(tstrm)
 
+
+    
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
-        lapinst = ldl.listAWS1DataSection(par_cinst, self.apinst)
-        tapinst = self.apinst['t']
+        lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
+        luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)
+        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
+        lstpos,tstpos = ldl.getListAndTime(par_stpos, self.stpos)
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
+        lst9dof,tst9dof = ldl.getListAndTime(par_9dof, self.st9dof)
+        lstdp,tstdp = ldl.getListAndTime(par_stdp, self.stdp)
+        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
+        lengd,tengd = ldl.getListAndTime(par_engd, self.engd)
+        
         iapinst = ldl.seekAWS1LogTime(tapinst, ts)
-        luiinst = ldl.listAWS1DataSection(par_cinst, self.uiinst)
-        tuiinst = self.uiinst['t']
         iuiinst = ldl.seekAWS1LogTime(tuiinst, ts)
-        lctrlst = ldl.listAWS1DataSection(par_cstat, self.ctrlst)
-        tctrlst = self.ctrlst['t']
         ictrlst = ldl.seekAWS1LogTime(tctrlst, ts)
-        lstpos = ldl.listAWS1DataSection(par_stpos, self.stpos)
-        tstpos = self.stpos['t']
         istpos = ldl.seekAWS1LogTime(tstpos, ts)
-        lstvel = ldl.listAWS1DataSection(par_stvel, self.stvel)
-        tstvel = self.stvel['t']
         istvel = ldl.seekAWS1LogTime(tstvel, ts)
-        lstatt = ldl.listAWS1DataSection(par_statt, self.statt)
-        tstatt = self.statt['t']
         istatt = ldl.seekAWS1LogTime(tstatt, ts)
-        lst9dof = ldl.listAWS1DataSection(par_9dof, self.st9dof)
-        tst9dof = self.st9dof['t']
         i9dof = ldl.seekAWS1LogTime(tst9dof, ts)
-        lstdp = ldl.listAWS1DataSection(par_stdp, self.stdp)
-        tstdp = self.stdp['t']
         istdp = ldl.seekAWS1LogTime(tstdp, ts)
-        lengr = ldl.listAWS1DataSection(par_engr, self.engr)
-        tengr = self.engr['t']
         iengr = ldl.seekAWS1LogTime(tengr, ts)
-        lengd = ldl.listAWS1DataSection(par_engd, self.engd)
-        tengd = self.engd['t']
         iengd = ldl.seekAWS1LogTime(tengd, ts) 
         tstrm = self.strm['t']
         istrm = ldl.seekAWS1LogTime(tstrm, ts)
@@ -486,44 +472,35 @@ class AWS1Log:
             tcur += dt
 
     def plot(self, ts=0, te=sys.float_info.max, path='./'):
-        lapinst = ldl.listAWS1DataSection(par_cinst, self.apinst)
-        tapinst = self.apinst['t']
+        lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
+        luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)
+        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
+        lstpos,tstpos = ldl.getListAndTime(par_stpos, self.stpos)
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
+        lst9dof,tst9dof = ldl.getListAndTime(par_9dof, self.st9dof)
+        lstdp,tstdp = ldl.getListAndTime(par_stdp, self.stdp)
+        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
+        lengd,tengd = ldl.getListAndTime(par_engd, self.engd)
+        
         iapinst = ldl.seekAWS1LogTime(tapinst, ts)
         iapinstf = ldl.seekAWS1LogTime(tapinst, te)
-        luiinst = ldl.listAWS1DataSection(par_cinst, self.uiinst)
-        tuiinst = self.uiinst['t']
         iuiinst = ldl.seekAWS1LogTime(tuiinst, ts)
         iuiinstf = ldl.seekAWS1LogTime(tuiinst, te)
-        lctrlst = ldl.listAWS1DataSection(par_cstat, self.ctrlst)
-        tctrlst = self.ctrlst['t']
         ictrlst = ldl.seekAWS1LogTime(tctrlst, ts)
         ictrlstf = ldl.seekAWS1LogTime(tctrlst, te)
-        lstpos = ldl.listAWS1DataSection(par_stpos, self.stpos)
-        tstpos = self.stpos['t']
         istpos = ldl.seekAWS1LogTime(tstpos, ts)
         istposf = ldl.seekAWS1LogTime(tstpos, te)
-        lstvel = ldl.listAWS1DataSection(par_stvel, self.stvel)
-        tstvel = self.stvel['t']
         istvel = ldl.seekAWS1LogTime(tstvel, ts)
         istvelf = ldl.seekAWS1LogTime(tstvel, te)
-        lstatt = ldl.listAWS1DataSection(par_statt, self.statt)
-        tstatt = self.statt['t']
         istatt = ldl.seekAWS1LogTime(tstatt, ts)
         istattf = ldl.seekAWS1LogTime(tstatt, te)
-        lst9dof = ldl.listAWS1DataSection(par_9dof, self.st9dof)
-        tst9dof = self.st9dof['t']
         i9dof = ldl.seekAWS1LogTime(tst9dof, ts)
         i9doff = ldl.seekAWS1LogTime(tst9dof, te)
-        lstdp = ldl.listAWS1DataSection(par_stdp, self.stdp)
-        tstdp = self.stdp['t']
         istdp = ldl.seekAWS1LogTime(tstdp, ts)
         istdpf = ldl.seekAWS1LogTime(tstdp, te)
-        lengr = ldl.listAWS1DataSection(par_engr, self.engr)
-        tengr = self.engr['t']
         iengr = ldl.seekAWS1LogTime(tengr, ts)
         iengrf = ldl.seekAWS1LogTime(tengr, te)
-        lengd = ldl.listAWS1DataSection(par_engd, self.engd)
-        tengd = self.engd['t']
         iengd = ldl.seekAWS1LogTime(tengd, ts) 
         iengdf = ldl.seekAWS1LogTime(tengd, te) 
         tstrm = self.strm['t']

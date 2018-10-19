@@ -910,6 +910,12 @@ def loadAWS1CtrlInst(fname, log_time):
     file.close()
     return {'t':t, 'acs':acs, 'meng':meng, 'seng':seng, 'rud':rud}
 
+def getListAndTime(par, data):
+    l = listAWS1DataSection(par, data)
+    t = data['t']
+    return l,t
+
+
 def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
     idt=0
     for key in keys:
