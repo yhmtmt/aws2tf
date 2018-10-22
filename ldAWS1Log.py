@@ -23,17 +23,20 @@ def printTimeStat(tvec):
 def calcStat(vec):
     return np.average(vec), np.max(vec), np.min(vec), np.std(vec)
 
+
 def printStat(vname, vec):
     vmax, vmin, vavg, vstd = calcStat(vec)
     print("%s max: %f min: %f avg: %f std: %f" % (vname, vmax, vmin, vavg, vstd))
-  
+
 def diffAWS1Data(vec):
+    ''' Calculates difference of each subsequent data. '''
     vnew=np.empty(shape=(vec.shape[0]-1), dtype=vec.dtype)
     for i in range(vnew.shape[0]):
         vnew[i] = vec[i+1] - vec[i]
     return vnew
 
 def diffAWS1DataVec(t, vec):
+    ''' Calculates time derivative of the sequence.'''
     dvec=np.zeros(shape=(vec.shape), dtype=vec.dtype)
     for i in range(1, dvec.shape[0]-1):
         dt0 = t[i]-t[i-1]
@@ -43,6 +46,7 @@ def diffAWS1DataVec(t, vec):
     return dvec
 
 def diffAWS1DataYaw(t, yaw):
+    ''' Calculates yaw rate from the time sequence of yaw.'''
     dyaw = np.zeros(shape=t.shape, dtype=float)
 
     for i in range(1, dyaw.shape[0]-1):
@@ -59,6 +63,7 @@ def diffAWS1DataYaw(t, yaw):
     return dyaw
 
 def diffAWS1DataCog(t, cog):
+    ''' Calculates course changing rate from the time sequence of cog'''
     dcog = np.zeros(shape=t.shape, dtype=float)
 
     for i in range(1, dcog.shape[0]-1):
@@ -75,6 +80,7 @@ def diffAWS1DataCog(t, cog):
     return dcog
 
 def integrateAWS1Data(t, vec):
+    ''' calculates time integral of the given sequence.'''
     tprev = t[0]
     vprev = vec[0]
     s = 0.0
@@ -88,6 +94,7 @@ def integrateAWS1Data(t, vec):
     return s
 
 def intersectTimeRanges(trng0, trng1):
+    ''' calculate intersection of the two sets of time ranges'''
     trng = []
     for tr0 in trng0:
         for tr1 in trng1:
@@ -110,6 +117,12 @@ def intersectTimeRanges(trng0, trng1):
     return trng
 
 def relateTimeRangeVecs(tx, ty, vx, vy, trng):
+    ''' 
+       set of related points is calculated from two sets of time sequence:
+       (tx, vx),(ty,vy).  Because both sequence could have different time
+       intervals,  the values of y are linearly interpolated. 
+    '''
+    
     rx = []
     ry = []
     for tr in trng:
@@ -127,6 +140,11 @@ def relateTimeRangeVecs(tx, ty, vx, vy, trng):
     return np.array(rx),np.array(ry)
 
 def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
+    '''
+        find stable ranges in given time sequence. smgn and emgn are 
+        the start and end margins eliminated from the result. th is the 
+        amplitude allowed in the stable ranges.
+    '''
     ts=-1
     te=-1
     tranges=[]
@@ -152,6 +170,9 @@ def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
     return tranges
 
 def findInRangeTimeRanges(t, vec, vmax=sys.float_info.max, vmin=-sys.float_info.min):
+    '''
+    find time ranges the values is in the range [vmin, vmax]
+    '''
     ts=-1
     te=-1
     tranges = []
@@ -169,7 +190,11 @@ def findInRangeTimeRanges(t, vec, vmax=sys.float_info.max, vmin=-sys.float_info.
 
     return tranges
 
-def seekAWS1LogTime(tseq,tseek):        
+def seekAWS1LogTime(tseq,tseek):
+    '''
+    finds index of the time sequence tseq corresponding to the time tseek.
+    the function returns two indices corresponding to before and after tseek.
+    '''
     iend=tseq.shape[0]-1
     if(tseek > tseq[-1]):
         return iend, iend
@@ -193,15 +218,14 @@ def seekAWS1LogTime(tseq,tseek):
 
     return i,i+1
 
-def printTimeHead(name, it, t):
-    if it[1] == 0:
-        print("%s t[<0]") 
-    elif it[0] == t.shape[0] -1:
-        print("%s t[>-1") 
-    else:
-        print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
 
 def seekNextDataIndex(tnext, it, t):
+    '''
+    find next data index given a tnext. 
+    if tnext is in the range headed by next time index, 
+    it[1],it[1]+1 is returned, otherwise binary search is 
+    done by seekAWS1LogTime.
+    '''    
     if it[1] == 0:
         if t[0] > tnext:
             return it
@@ -216,6 +240,14 @@ def seekNextDataIndex(tnext, it, t):
             return [it[1],it[1]+1]
     return seekAWS1LogTime(t, tnext)
 
+def printTimeHead(name, it, t):
+    if it[1] == 0:
+        print("%s t[<0]") 
+    elif it[0] == t.shape[0] -1:
+        print("%s t[>-1") 
+    else:
+        print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
+
 def listAWS1DataSection(keys, data):
     lst = []
     for key in keys:
@@ -223,6 +255,10 @@ def listAWS1DataSection(keys, data):
     return lst
 
 def itpltAWS1DataVec(ldata, t, ts, it):
+    '''
+    gives linear interpoloation at time t for ldata. 
+    (ldata is a list of time sequence along time given as ts)
+    '''
     vec = np.zeros(shape=len(ldata),dtype=float)
     idt = 0
     for data in ldata:
@@ -915,6 +951,8 @@ def getListAndTime(par, data):
     t = data['t']
     return l,t
 
+
+
 def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
     # meng/rpm, 100 < rud < 154
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -925,16 +963,31 @@ def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
     return rx,ry
 
 def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
-    # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
+    # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 152 < meng < 255
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
-    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
+    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 152)
     trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
     trng = intersectTimeRanges(trrud, trcog)
     trng = intersectTimeRanges(trng, trsog)
     trng = intersectTimeRanges(trng, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
     rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
+    return rx,ry
+
+def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst):
+    # sog/cog -3 < dcog < 3, 100 < rud < 154, 102 < meng < 152
+    trdcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 150, 102)
+    trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=30.0, emgn=0.0, th=1.0)
+    trcog = findStableTimeRanges(tstvel, lstvel[0], smgn=30.0, emgn=0.0, th=5.0)
+    trng = intersectTimeRanges(trrud, trdcog)
+    trng = intersectTimeRanges(trng, trsog)
+    trng = intersectTimeRanges(trng, trcog)
+    trng = intersectTimeRanges(trng, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    rx,ry = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[0], trng)
     return rx,ry
 
 def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
