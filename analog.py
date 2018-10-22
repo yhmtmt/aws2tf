@@ -2,6 +2,9 @@ import AWS1Log
 import argparse
 import sys
 
+import pdb
+pdb.set_trace()
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--path_log", type=str, default="./", help="Path to the AWS1's log directory")
@@ -32,7 +35,7 @@ if log_time == -1:
 log_time = log.load(path_log, log_time)
 
 if args.stat:
-    log.stat(ts,te, path_plot)
+    log.stat(ts,te)
 
 if args.plot:
     log.plot(ts,te, path_plot)

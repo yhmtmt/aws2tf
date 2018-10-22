@@ -4,6 +4,7 @@ import re
 import subprocess
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 import ldAWS1Video as ldv
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
@@ -306,9 +307,9 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
                 found = True
                 break
         if not found:
-            path_log_bin = path_log+"/"+log_bin
+            path_log_bin = path_log+"/"+log_bin.decode('utf-8')
             command = ["log2txt", chan_type, path_log_bin]
-            print("Converting " + log_bin + " to text.")
+            print("Converting " + log_bin.decode('utf-8') + " to text.")
             subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
 
     ##### Scan channel log files
@@ -908,3 +909,50 @@ def loadAWS1CtrlInst(fname, log_time):
 
     file.close()
     return {'t':t, 'acs':acs, 'meng':meng, 'seng':seng, 'rud':rud}
+
+def getListAndTime(par, data):
+    l = listAWS1DataSection(par, data)
+    t = data['t']
+    return l,t
+
+def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
+    # meng/rpm, 100 < rud < 154
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
+    trng = intersectTimeRanges(trrud, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
+    return rx,ry
+
+def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
+    # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 153 < meng < 255
+    trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 150)
+    trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
+    trng = intersectTimeRanges(trrud, trcog)
+    trng = intersectTimeRanges(trng, trsog)
+    trng = intersectTimeRanges(trng, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
+    return rx,ry
+
+def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
+    idt=0
+    for key in keys:
+        plt.plot(ts[i0:i1], ldata[idt][i0:i1])
+        ystr = str[idt][0] + " [" + str[idt][1] + "]"
+        idt+=1
+        figname=key+".png"
+        plt.xlabel("Time [sec]")
+        plt.ylabel(ystr)
+        plt.savefig(path+"/"+figname)
+        plt.clf()
+                
+def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
+    figname=parx+pary+".png"
+    plt.scatter(rx,ry)
+    plt.xlabel(strx[0]+" ["+strx[1]+"]")
+    plt.ylabel(stry[0]+" ["+stry[1]+"]")
+    plt.savefig(path+"/"+figname)
+    plt.clf()
