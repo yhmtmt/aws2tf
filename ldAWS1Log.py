@@ -277,7 +277,7 @@ def printAWS1DataVec(name, keys, vdata):
     print (strRec)
 
 
-def selectAWS1Log(path_aws1_log):
+def listAWS1Log(path_aws1_log):
     command=['ls', path_aws1_log]
     files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
     logs = re.findall(rb"[0-9]{17}", files)
@@ -289,6 +289,10 @@ def selectAWS1Log(path_aws1_log):
         str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
         print(("%d:"%ilog)+log.decode('utf-8') + ":" + str_log_time.decode('utf-8'))
         ilog = ilog + 1
+    return logs
+
+def selectAWS1Log(path_aws1_log):
+    logs=listAWS1Log(path_aws1_log)
     print("Select log number:")
     str_log_number=sys.stdin.readline()
     log_number=int(str_log_number)
