@@ -277,25 +277,31 @@ def printAWS1DataVec(name, keys, vdata):
     print (strRec)
 
 
-def listAWS1Log(path_aws1_log):
+def listAWS1Logs(path_aws1_log):
     command=['ls', path_aws1_log]
     files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
     logs = re.findall(rb"[0-9]{17}", files)
     if len(logs) == 0:
         return -1
+    return logs
+
+def printAWS1Logs(logs):
     ilog = 0
     for log in logs:
         command=['t2str', log]
         str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
         print(("%d:"%ilog)+log.decode('utf-8') + ":" + str_log_time.decode('utf-8'))
         ilog = ilog + 1
-    return logs
+    
 
-def selectAWS1Log(path_aws1_log):
-    logs=listAWS1Log(path_aws1_log)
-    print("Select log number:")
-    str_log_number=sys.stdin.readline()
-    log_number=int(str_log_number)
+def selectAWS1Log(path_aws1_log, log_number=-1):
+    logs=listAWS1Logs(path_aws1_log)
+    if log_number == -1:
+        printAWS1Logs(logs)
+        print("Select log number:")
+        str_log_number=sys.stdin.readline()
+        log_number=int(str_log_number)
+    
     print("log %d : %s is selected." % (log_number, logs[log_number]))
     log_time = int(logs[log_number])
     path_log= "%s/%d"%(path_aws1_log,log_time)
@@ -317,6 +323,7 @@ def selectAWS1Log(path_aws1_log):
             else:
                 print(chan+".jr not found.")
                 return -1
+
     return log_time
 
 
