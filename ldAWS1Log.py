@@ -286,7 +286,7 @@ def loadAWS1Logs(path_log, list_file):
         
         path=path_log + "/" + log_time
         if(os.path.isdir(path)):
-            logs.append(log_time)
+            logs.append(log_time.encode('utf-8'))
         else:
             print("No such log: %s" % path)
     return logs
@@ -891,7 +891,10 @@ def loadAWS1CtrlStat(fname, log_time):
             seng.append(int(line[iseng]))
             rud.append(int(line[irud]))
             n += 1
-    dtavg /= float(n)
+    if n != 0:
+        dtavg /= float(n)
+    else:
+        dtavg = 0
 
     t = np.array(t)
     meng = np.array(meng)
@@ -961,8 +964,11 @@ def loadAWS1CtrlInst(fname, log_time):
             seng.append(int(line[iseng]))
             rud.append(int(line[irud]))
             n += 1
-    dtavg /= float(n)
-    
+    if n != 0:
+        dtavg /= float(n)
+    else:
+        dtavg = 0
+        
     t = np.array(t)
     acs = np.array(acs)
     meng = np.array(meng)

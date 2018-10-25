@@ -3,7 +3,6 @@ import argparse
 import sys
 import os
 import ldAWS1Log as ldl
-
 import pdb
 
 pdb.set_trace()
@@ -58,7 +57,7 @@ if args.play:
     
 if len(mstat) != 0:
     if mstat == "sogrpm":
-        ldl.plotAWS1MstatSogRpm(path_log, logs, path_plot)
+        AWS1Log.plotAWS1MstatSogRpm(ts,te, path_log, logs, path_plot)
     else:
         print("Unknown mult-stat %s" % mstat)
             
