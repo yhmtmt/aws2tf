@@ -276,7 +276,22 @@ def printAWS1DataVec(name, keys, vdata):
         strRec += " %s:%f," % (keys[idt], vdata[idt])
     print (strRec)
 
+def loadAWS1Logs(path_log, list_file):
+    file=open(list_file)
+    logs=[]
+    while True:
+        log_time=file.readline().strip()
+        if len(log_time) != 17:
+            break
+        
+        path=path_log + "/" + log_time
+        if(os.path.isdir(path)):
+            logs.append(log_time)
+        else:
+            print("No such log: %s" % path)
+    return logs
 
+    
 def listAWS1Logs(path_aws1_log):
     command=['ls', path_aws1_log]
     files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
@@ -1012,7 +1027,10 @@ def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
         plt.ylabel(ystr)
         plt.savefig(path+"/"+figname)
         plt.clf()
-                
+        csvname=key+".csv"
+        rel=np.c_[ts[i0:i1], ldata[idt][i0:i1]]
+        np.savetxt(path+"/"+csvname, rel, delimiter=',')
+        
 def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
     figname=parx+pary+".png"
     plt.scatter(rx,ry)
@@ -1020,3 +1038,7 @@ def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
     plt.ylabel(stry[0]+" ["+stry[1]+"]")
     plt.savefig(path+"/"+figname)
     plt.clf()
+    
+    csvname=parx+pary+".csv"
+    rel=np.c_[rx,ry]
+    np.savetxt(path+"/"+csvname, rel, delimiter=',')

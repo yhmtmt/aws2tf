@@ -179,6 +179,11 @@ class AWS1Log:
 
         return log_time
 
+    def getRelSogRpm(self, ts=0.0, te=sys.float_info.max):
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
+        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
+        return getRelSogRpm(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr)
     
     def stat(self, ts=0.0, te=sys.float_info.max):
         lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
@@ -570,6 +575,17 @@ class AWS1Log:
         rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst)
         ldl.plotAWS1DataRelation(path, "sog", "cog", str_stvel[1], str_stvel[0], rx, ry)
 
+
+def plotAWS1MstatSogRpm(path_log, logs, path_plot):
+    log = AWS1Log()
+    for log_time in logs:
+        log.load(path_log, log_time)
+        _rx,_ry=log.getRelSogRpm(ts, te)
+        rx = np.concatenate((rx,_rx), axis=0)
+        ry = np.concatenate((ry,_ry), axis=0)
+    ldl.plotAWS1DataRelation(path_plot, par_stvel[1], par_engr[0], str_stvel[1], str_engr[1], rx, ry)
+   
+    
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
     log = AWS1Log()
