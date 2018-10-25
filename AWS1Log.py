@@ -545,29 +545,6 @@ class AWS1Log:
         minlon = midlon - rlon
         maxlon = midlon + rlon
 
-        url = "https://www.openstreetmap.org/#map=13"
-        payload={
-            'mapnik_format':'png',
-            'mapnik_scale': 25000,
-            'minlon' : minlon,
-            'maxlon' : maxlon,
-            'minlat' : minlat,
-            'maxlat' : maxlat,
-            'format' : 'mapnik'
-        }
- #       res = requests.post(url, payload)
- #       print(res.headers)
- #       mapimg = Image.open(BytesIO(res.content))
-
-#        bmap = Basemap(projection='merc',
-#                llcrnrlat=minlat, urcrnrlat=maxlat, llcrnrlon=minlon, urcrnrlon=maxlon,
-#                lat_ts=0, resolution=None)
-#        bmap.imshow(mapimg, origin='upper')
-#        x,y = bmap(lstpos[1][istpos[0]:istposf[1]], lstpos[0][istpos[0]:istposf[1]])
-#       bmap.plot(x,y)
-#        plt.savefig(path+"/"+"map.png")
-#        plt.clf()
-
         rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr)
         ldl.plotAWS1DataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
         rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr)
@@ -576,7 +553,7 @@ class AWS1Log:
         ldl.plotAWS1DataRelation(path, "sog", "cog", str_stvel[1], str_stvel[0], rx, ry)
 
 
-def plotAWS1MstatSogRpm(ts, te, path_log, logs, path_plot):
+def plotAWS1MstatSogRpm(path_log, logs, path_plot):
     if not os.path.exists(path_plot):
         os.mkdir(path_plot)
 
@@ -585,7 +562,7 @@ def plotAWS1MstatSogRpm(ts, te, path_log, logs, path_plot):
     ry = np.array([])
     for log_time in logs:
         log.load(path_log, int(log_time.decode("utf-8")))
-        _rx,_ry=log.getRelSogRpm(ts, te)     
+        _rx,_ry=log.getRelSogRpm(0, sys.float_info.max)     
         rx = np.concatenate((rx,_rx), axis=0)
         ry = np.concatenate((ry,_ry), axis=0)
     ldl.plotAWS1DataRelation(path_plot, par_stvel[1], par_engr[0], str_stvel[1], str_engr[1], rx, ry)

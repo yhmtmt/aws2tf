@@ -983,8 +983,6 @@ def getListAndTime(par, data):
     t = data['t']
     return l,t
 
-
-
 def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
     # meng/rpm, 100 < rud < 154
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -999,7 +997,7 @@ def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
     trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 152)
-    trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=5.0, emgn=0.0, th=1.0)
+    trsog = findStableTimeRanges(tstvel, lstvel[1], smgn=10.0, emgn=10.0, th=1.0)
     trng = intersectTimeRanges(trrud, trcog)
     trng = intersectTimeRanges(trng, trsog)
     trng = intersectTimeRanges(trng, trmeng)
