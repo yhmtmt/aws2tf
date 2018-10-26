@@ -12,6 +12,7 @@ from PIL import Image
 import requests
 import tensorflow as tf
 from utils import label_map_util
+import Odet
 import cv2
 import ldAWS1Log as ldl
 
@@ -336,19 +337,7 @@ class AWS1Log:
         tcur = ts
 
         # Setting up object detector
-        label_map=label_map_util.load_labelmap('mscoco_label_map.pbtxt')
-        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=90, use_display_name=True)
-        category_index=label_map_util.create_category_index(categories)
-        
-        config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
-
-        with tf.gfile.FastGFile('frozen_inference_graph.pb', 'rb') as f:
-            graph_def=tf.GraphDef()
-            graph_def.ParseFromString(f.read())
-        
-        sess=tf.Session(config=config)
-        sess.graph.as_default()
-        tf.import_graph_def(graph_def, name='')
+        odt = Odet.Odet()
         
         bodet=False
         budist=False
@@ -411,42 +400,16 @@ class AWS1Log:
                     frm_ud = frm
 
                 if(bodet):
-                    rows=frm_ud.shape[0]
-                    cols=frm_ud.shape[1]
-                    #inp = cv2.resize(frm_ud, (960, 540))
-                    inp=frm_ud.copy()
-                    inp=inp[:,:,[2,1,0]]
-                    out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
-                                sess.graph.get_tensor_by_name('detection_scores:0'),
-                                sess.graph.get_tensor_by_name('detection_boxes:0'),
-                                sess.graph.get_tensor_by_name('detection_classes:0')],
-                               feed_dict={'image_tensor:0':inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
-                
-                    num_detections = int(out[0][0])
-                    for i in range(num_detections):
-                        classId = int(out[3][0][i])
-                        if classId in category_index.keys():
-                            oname=category_index[classId]['name']
-                        else:
-                            oname='Unknown'
-                        score = float(out[1][0][i])
-                        bbox=[float(v) for v in out[2][0][i]]
+                    odt.proc(frm_ud)
                     
-                        if score > 0.3:
-                            x = bbox[1] * cols
-                            y = bbox[0] * rows
-                            right = bbox[3] * cols
-                            bottom = bbox[2] * rows
-                            cv2.rectangle(frm_ud, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
-                            font = cv2.FONT_HERSHEY_SIMPLEX
-                            cv2.putText(frm_ud, oname, (int(x), int(y)+20), font ,1, (0, 255, 0), 2, cv2.LINE_AA)            
                 font=cv2.FONT_HERSHEY_SIMPLEX
                 txt="Time %5.2f Frame %06d" % (tcur, ifrm)
-                
+
                 if(budist):                
                     txt+=" Undist"
+                    
                 cv2.putText(frm_ud, txt, (0, 30), font, 1, (0,255,0), 2, cv2.LINE_AA)
-                txt="RUD %03f ENG %03f REV %04f SOG %03f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
+                txt="RUD %03.0f ENG %03.0f REV %04.0f SOG %03.1f" % (vuiinst[3], vuiinst[1],vengr[0], vstvel[1])
                 cv2.putText(frm_ud, txt, (0, 60), font, 1, (0,255,0), 2, cv2.LINE_AA)
                 # draw horizon
                 fac=math.pi/180.0
@@ -463,7 +426,7 @@ class AWS1Log:
                         cv2.line(frm_ud,(pt0[0],pt0[1]), (pt0[0],pt0[1]-10), (0, 255, 0), 3)
                         txt="%02d" % i
                         cv2.putText(frm_ud, txt, (pt0[0], pt0[1] - 20), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                
+
                 cv2.imshow('frame', frm_ud)
                 key = cv2.waitKey(int(dt*1000))
                 if key == 27:
