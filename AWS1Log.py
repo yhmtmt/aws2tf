@@ -1,6 +1,5 @@
 import sys
 import os
-#import pdb          # for debug
 import re           # for regular expression
 import subprocess   # for command execution 
 import random
@@ -10,8 +9,6 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 from PIL import Image
 import requests
-import tensorflow as tf
-from utils import label_map_util
 import Odet
 import cv2
 import ldAWS1Log as ldl
@@ -148,7 +145,6 @@ str_cstat=[["Main Engine Throttle Control","None"], ["Sub Engine Throttle Contro
 par_cinst=['acs','meng','seng','rud']
 str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 
-
 class AWS1Log:
     ''' AWS1 log '''
     def __init__(self):
@@ -181,113 +177,12 @@ class AWS1Log:
         return log_time
 
     def getRelSogRpm(self, ts=0.0, te=sys.float_info.max):
-        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
-        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
-        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
-        return ldl.getRelSogRpm(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr)
-    
-    def stat(self, ts=0.0, te=sys.float_info.max):
-        lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
-        luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)
-        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
-        lstpos,tstpos = ldl.getListAndTime(par_stpos, self.stpos)
-        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
         lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
-        lst9dof,tst9dof = ldl.getListAndTime(par_9dof, self.st9dof)
-        lstdp,tstdp = ldl.getListAndTime(par_stdp, self.stdp)
+        terr=ldl.getErrorAtt(tstatt, lstatt)
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
-        lengd,tengd = ldl.getListAndTime(par_engd, self.engd)
-        
-        iapinst = ldl.seekAWS1LogTime(tapinst, ts)
-        iapinstf = ldl.seekAWS1LogTime(tapinst, te)
-        iuiinst = ldl.seekAWS1LogTime(tuiinst, ts)
-        iuiinstf = ldl.seekAWS1LogTime(tuiinst, te)
-        ictrlst = ldl.seekAWS1LogTime(tctrlst, ts)
-        ictrlstf = ldl.seekAWS1LogTime(tctrlst, te)
-        istpos = ldl.seekAWS1LogTime(tstpos, ts)
-        istposf = ldl.seekAWS1LogTime(tstpos, te)
-        istvel = ldl.seekAWS1LogTime(tstvel, ts)
-        istvelf = ldl.seekAWS1LogTime(tstvel, te)
-        istatt = ldl.seekAWS1LogTime(tstatt, ts)
-        istattf = ldl.seekAWS1LogTime(tstatt, te)
-        i9dof = ldl.seekAWS1LogTime(tst9dof, ts)
-        i9doff = ldl.seekAWS1LogTime(tst9dof, te)
-        istdp = ldl.seekAWS1LogTime(tstdp, ts)
-        istdpf = ldl.seekAWS1LogTime(tstdp, te)
-        iengr = ldl.seekAWS1LogTime(tengr, ts)
-        iengrf = ldl.seekAWS1LogTime(tengr, te)
-        iengd = ldl.seekAWS1LogTime(tengd, ts) 
-        iengdf = ldl.seekAWS1LogTime(tengd, te)
-        
-        tstrm = self.strm['t']
-        istrm = ldl.seekAWS1LogTime(tstrm, ts)
-        istrmf = ldl.seekAWS1LogTime(tstrm, te) 
-        strm = self.strm['strm']   
-        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
-        ret,frm = strm.read()
-        ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
-        while ifrm != istrm[1]:
-            ret,frm = strm.read()
-            ifrm += 1
-
-        print("STAT apinst")
-        ldl.printTimeStat(tapinst)
-        for key in par_cinst:
-            ldl.printStat(key, self.apinst[key])
-
-        print("STAT uiinst")
-        ldl.printTimeStat(tuiinst)
-        for key in par_cinst:
-            ldl.printStat(key, self.uiinst[key])
-
-        print("STAT ctrlstat")
-        ldl.printTimeStat(tctrlst)
-        for key in par_cstat:
-            ldl.printStat(key, self.ctrlst[key])
-
-        print("STAT stpos")
-        ldl.printTimeStat(tstpos)
-        for key in par_stpos:
-            ldl.printStat(key, self.stpos[key])
-
-        print("STAT stvel")
-        ldl.printTimeStat(tstvel)
-        for key in par_stvel:
-            ldl.printStat(key, self.stvel[key])
-
-        print("STAT statt")
-        ldl.printTimeStat(tstatt)
-        for key in par_statt:
-            ldl.printStat(key, self.statt[key])
-
-        print("STAT 9dof")
-        ldl.printTimeStat(tst9dof)
-        for key in par_9dof:
-            ldl.printStat(key, self.st9dof[key])
-
-        print("STAT stdp")
-        ldl.printTimeStat(tstdp)
-        for key in par_stdp:
-            ldl.printStat(key, self.stdp[key])
-
-        print("STAT engr")
-        ldl.printTimeStat(tengr)
-        for key in par_engr:
-            ldl.printStat(key, self.engr[key])
-
-        print("STAT engd")
-        ldl.printTimeStat(tengd)
-        for key in par_engd:
-            ldl.printStat(key, self.engd[key])
-
-        ftotal = ldl.integrateAWS1Data(tengd, self.engd['frate'])
-        ftotal /= 3600.0
-        print("Estimated fuel consumption: %f" % ftotal) 
-
-        print("STAT strm")
-        ldl.printTimeStat(tstrm)
-
-
+        return ldl.getRelSogRpm(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
     
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
@@ -484,16 +379,68 @@ class AWS1Log:
         if not os.path.exists(path):
             os.mkdir(path)
 
-        ldl.plotAWS1DataSection(path, par_cinst, str_cinst, lapinst, tapinst, iapinst[0], iapinstf[1])
-        ldl.plotAWS1DataSection(path, par_cinst, str_cinst, luiinst, tuiinst, iuiinst[0], iuiinstf[1])
-        ldl.plotAWS1DataSection(path, par_cstat, str_cstat, lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
-        ldl.plotAWS1DataSection(path, par_stpos, str_stpos, lstpos, tstpos, istpos[0], istposf[1])
-        ldl.plotAWS1DataSection(path, par_stvel, str_stvel, lstvel, tstvel, istvel[0], istvelf[1])
-        ldl.plotAWS1DataSection(path, par_statt, str_statt, lstatt, tstatt, istatt[0], istattf[1])
-        ldl.plotAWS1DataSection(path, par_9dof, str_9dof, lst9dof, tst9dof, i9dof[0], i9doff[1])
-        ldl.plotAWS1DataSection(path, par_stdp, str_stdp, lstdp, tstdp, istdp[0], istdpf[1])
-        ldl.plotAWS1DataSection(path, par_engr, str_engr, lengr, tengr, iengr[0], iengrf[1])
-        ldl.plotAWS1DataSection(path, par_engd, str_engd, lengd, tengd, iengd[0], iengdf[1])
+        # calculate and save statistics
+        csvname=path + "/stat.csv"
+        with open(csvname, mode='w') as statcsv:
+            str="name, max, min, avg, dev\n"
+            statcsv.write(str)
+            
+            for key in par_cinst:
+                ldl.saveStat(statcsv, key, self.apinst[key])
+
+            for key in par_cinst:
+                ldl.saveStat(statcsv, key, self.uiinst[key])
+
+            for key in par_cstat:
+                ldl.saveStat(statcsv, key, self.ctrlst[key])
+
+            for key in par_stpos:
+                ldl.saveStat(statcsv, key, self.stpos[key])
+
+            for key in par_stvel:
+                ldl.saveStat(statcsv, key, self.stvel[key])
+
+            for key in par_statt:
+                ldl.saveStat(statcsv, key, self.statt[key])
+
+            for key in par_9dof:
+                ldl.saveStat(statcsv, key, self.st9dof[key])
+
+            for key in par_stdp:
+                ldl.saveStat(statcsv, key, self.stdp[key])
+
+            for key in par_engr:
+                ldl.saveStat(statcsv, key, self.engr[key])
+
+            for key in par_engd:
+                ldl.saveStat(statcsv, key, self.engd[key])
+
+            ftotal = ldl.integrateAWS1Data(tengd, self.engd['frate'])
+            ftotal /= 3600.0
+            str="ftotal,%f,%f,%f,%f\n" % (ftotal, ftotal, ftotal, ftotal)
+            statcsv.write(str)
+
+        # plot data
+        ldl.plotAWS1DataSection(path, par_cinst, str_cinst,
+                                lapinst, tapinst, iapinst[0], iapinstf[1])
+        ldl.plotAWS1DataSection(path, par_cinst, str_cinst,
+                                luiinst, tuiinst, iuiinst[0], iuiinstf[1])
+        ldl.plotAWS1DataSection(path, par_cstat, str_cstat,
+                                lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
+        ldl.plotAWS1DataSection(path, par_stpos, str_stpos,
+                                lstpos, tstpos, istpos[0], istposf[1])
+        ldl.plotAWS1DataSection(path, par_stvel, str_stvel,
+                                lstvel, tstvel, istvel[0], istvelf[1])
+        ldl.plotAWS1DataSection(path, par_statt, str_statt,
+                                lstatt, tstatt, istatt[0], istattf[1])
+        ldl.plotAWS1DataSection(path, par_9dof, str_9dof,
+                                lst9dof, tst9dof, i9dof[0], i9doff[1])
+        ldl.plotAWS1DataSection(path, par_stdp, str_stdp,
+                                lstdp, tstdp, istdp[0], istdpf[1])
+        ldl.plotAWS1DataSection(path, par_engr, str_engr,
+                                lengr, tengr, iengr[0], iengrf[1])
+        ldl.plotAWS1DataSection(path, par_engd, str_engd,
+                                lengd, tengd, iengd[0], iengdf[1])
 
         minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
         maxlat = max(lstpos[0][istpos[0]:istposf[1]]) 
@@ -508,11 +455,13 @@ class AWS1Log:
         minlon = midlon - rlon
         maxlon = midlon + rlon
 
-        rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr)
+        terr = ldl.getErrorAtt(tstatt, lstatt)
+        
+        rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotAWS1DataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
-        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr)
+        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotAWS1DataRelation(path, "sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
-        rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst)
+        rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst, terr)
         ldl.plotAWS1DataRelation(path, "sog", "cog", str_stvel[1], str_stvel[0], rx, ry)
 
 
@@ -539,6 +488,5 @@ if __name__ == '__main__':
     log_time = ldl.selectAWS1Log(awspath+"/log")
     log_time = log.load(awspath+"/log", log_time)
     plot_dir=("/plot_%d" % log_time)
-    log.stat(0,10000, awspath+plot_dir)
     log.plot(0,550, awspath+plot_dir)
     log.play(0,10000)

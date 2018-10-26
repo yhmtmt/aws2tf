@@ -28,6 +28,11 @@ def printStat(vname, vec):
     vmax, vmin, vavg, vstd = calcStat(vec)
     print("%s max: %f min: %f avg: %f std: %f" % (vname, vmax, vmin, vavg, vstd))
 
+def saveStat(file, vname, vec):
+    vmax, vmin, vavg, vstd = calcStat(vec)
+    str="%s, %f, %f, %f, %f\n" % (vname, vmax, vmin, vavg, vstd)
+    file.write(str)
+    
 def diffAWS1Data(vec):
     ''' Calculates difference of each subsequent data. '''
     vnew=np.empty(shape=(vec.shape[0]-1), dtype=vec.dtype)
@@ -983,16 +988,17 @@ def getListAndTime(par, data):
     t = data['t']
     return l,t
 
-def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr):
+def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     # meng/rpm, 100 < rud < 154
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
     trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
     trng = intersectTimeRanges(trrud, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
     rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
     return rx,ry
 
-def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
+def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 152 < meng < 255
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -1002,10 +1008,11 @@ def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr):
     trng = intersectTimeRanges(trng, trsog)
     trng = intersectTimeRanges(trng, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
     rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
     return rx,ry
 
-def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst):
+def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst, terr=[[]]):
     # sog/cog -3 < dcog < 3, 100 < rud < 154, 102 < meng < 152
     trdcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -1017,13 +1024,20 @@ def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst):
     trng = intersectTimeRanges(trng, trcog)
     trng = intersectTimeRanges(trng, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
     rx,ry = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[0], trng)
     return rx,ry
+
+def getErrorAtt(tstatt, lstatt):
+    # No update found in attitude values
+    trng = findStableTimeRanges(tstatt,lstatt[0],smgn=1.0, emgn=1.0, th=0.0)
+    return trng
 
 def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
     idt=0
     for key in keys:
         plt.plot(ts[i0:i1], ldata[idt][i0:i1])
+        rel=np.c_[ts[i0:i1], ldata[idt][i0:i1]]
         ystr = str[idt][0] + " [" + str[idt][1] + "]"
         idt+=1
         figname=key+".png"
@@ -1032,7 +1046,7 @@ def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
         plt.savefig(path+"/"+figname)
         plt.clf()
         csvname=key+".csv"
-        rel=np.c_[ts[i0:i1], ldata[idt][i0:i1]]
+
         np.savetxt(path+"/"+csvname, rel, delimiter=',')
         
 def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
