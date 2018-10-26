@@ -21,7 +21,10 @@ def printTimeStat(tvec):
     print("Total time %f  Time step min: %f avg: %f max: %f std: %f" % (ttotal, dtmin, dtavg, dtmax, dtstd)) 
 
 def calcStat(vec):
-    return np.average(vec), np.max(vec), np.min(vec), np.std(vec)
+    if len(vec) != 0:
+        return np.average(vec), np.max(vec), np.min(vec), np.std(vec)
+    else:
+        return np.nan,np.nan,np.nan,np.nan
 
 
 def printStat(vname, vec):
@@ -201,6 +204,8 @@ def seekAWS1LogTime(tseq,tseek):
     the function returns two indices corresponding to before and after tseek.
     '''
     iend=tseq.shape[0]-1
+    if iend < 0:
+        return iend, iend
     if(tseek > tseq[-1]):
         return iend, iend
     elif(tseek < tseq[0]):

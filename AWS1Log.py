@@ -469,6 +469,14 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot):
     if not os.path.exists(path_plot):
         os.mkdir(path_plot)
 
+    if not os.path.exists(path_sogrpm):
+        os.mkdir(path_sogrpm)
+    else:
+        print("%s exists. Overwrite? (y/n)" % path)
+        yorn=sys.stdin.readline().strip()
+        if yorn != "y":
+            return
+
     log = AWS1Log()
     rx = np.array([])
     ry = np.array([])
@@ -477,7 +485,8 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot):
         _rx,_ry=log.getRelSogRpm(0, sys.float_info.max)     
         rx = np.concatenate((rx,_rx), axis=0)
         ry = np.concatenate((ry,_ry), axis=0)
-    ldl.plotAWS1DataRelation(path_plot, par_stvel[1], par_engr[0], str_stvel[1], str_engr[1], rx, ry)
+    ldl.plotAWS1DataRelation(path_sogrpm, par_stvel[1], par_engr[0],
+                             str_stvel[1], str_engr[1], rx, ry)
    
     
 if __name__ == '__main__':

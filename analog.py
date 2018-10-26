@@ -44,17 +44,35 @@ if args.list:
 if len(logs) != 0:
     logs = ldl.loadAWS1Logs(path_log, logs)
     ldl.printAWS1Logs(logs)
-            
 
+def plotAWS1Log(log, log_time):
+    if not os.path.exists(path_plot):
+        os.mkdir(path_plot)
+    
+    path="%s/%d" % (path_plot, log_time)
+    if not os.path.exists(path):        
+        log.plot(ts,te, path)
+    else:
+        print("%s exists. Overwrite? (y/n)" % path)
+        yorn=sys.stdin.readline().strip()
+        if yorn == "y":
+            log.plot(ts,te,path)
+    
 if args.plot:
-    log.plot(ts,te, path_plot)
-
+    plotAWS1Log(log, log_time)
+    
 if args.play:
     log.play(ts,te)
     
 if len(mstat) != 0:
     if mstat == "sogrpm":
         AWS1Log.plotAWS1MstatSogRpm(path_log, logs, path_plot)
+    elif mstat == "plot":
+        log = AWS1Log.AWS1Log()
+        for log_time in logs:
+            log.load(path_log, int(log_time))
+            plotAWS1Log(log, int(log_time))
+        
     else:
         print("Unknown mult-stat %s" % mstat)
             
