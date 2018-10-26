@@ -89,6 +89,9 @@ def diffAWS1DataCog(t, cog):
 
 def integrateAWS1Data(t, vec):
     ''' calculates time integral of the given sequence.'''
+    if len(t) == 0:
+        return 0
+    
     tprev = t[0]
     vprev = vec[0]
     s = 0.0
@@ -100,6 +103,20 @@ def integrateAWS1Data(t, vec):
         tprev = tcur
         vprev = vcur
     return s
+
+def complementTimeRange(t, trng):
+    if len(t) == 0:
+        return []
+    
+    tprev=t[0]
+    trngc=[]
+    for tr in trng:
+        if tprev != tr[0]:
+            trngc.append([tprev, tr[0]])
+        tprev = tr[1]
+    if tprev != t[-1]:
+        trngc.append([tprev, t[-1]])
+    return trngc
 
 def intersectTimeRanges(trng0, trng1):
     ''' calculate intersection of the two sets of time ranges'''
@@ -1036,7 +1053,7 @@ def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst, terr=[[]]):
 def getErrorAtt(tstatt, lstatt):
     # No update found in attitude values
     trng = findStableTimeRanges(tstatt,lstatt[0],smgn=1.0, emgn=1.0, th=0.0)
-    return trng
+    return complementTimeRange(tstatt, trng)
 
 def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
     idt=0
