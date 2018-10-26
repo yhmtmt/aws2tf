@@ -39,8 +39,8 @@ if args.stat or args.plot or args.play:
     log.load(path_log, log_time)
     
 if args.list:
-    logs=ldl.listAWS1Logs(path_log)
-    ldl.printAWS1Logs(logs)  
+    logsall=ldl.listAWS1Logs(path_log)
+    ldl.printAWS1Logs(logsall)  
     
 if len(logs) != 0:
     logs = ldl.loadAWS1Logs(path_log, logs)
