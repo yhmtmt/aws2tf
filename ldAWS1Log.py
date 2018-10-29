@@ -246,6 +246,8 @@ def seekNextDataIndex(tnext, it, t):
     else: 
         if t[it[0]] <= tnext and t[it[1]] > tnext:
             return it
+        elif it[1] == t.shape[0] - 1:
+            return it[1],it[1]
         elif t[it[1]] <= tnext and t[it[1]+1] > tnext:
             return [it[1],it[1]+1]
     return seekAWS1LogTime(t, tnext)
