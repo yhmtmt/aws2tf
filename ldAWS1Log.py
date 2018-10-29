@@ -155,6 +155,9 @@ def relateTimeRangeVecs(tx, ty, vx, vy, trng):
         ix1s,ix1e = seekAWS1LogTime(tx, tr[1])
         for ix in range(ix0e, ix1s):
             iys,iye = seekAWS1LogTime(ty, tx[ix])
+            if iys==iye: # out of range for y data.
+                continue
+            
             t = tx[ix]
             t0 = ty[iys]
             t1 = ty[iye]
