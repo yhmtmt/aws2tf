@@ -469,6 +469,7 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot):
     if not os.path.exists(path_plot):
         os.mkdir(path_plot)
 
+    path_sogrpm = path_plot + "/sogrpm"    
     if not os.path.exists(path_sogrpm):
         os.mkdir(path_sogrpm)
     else:
