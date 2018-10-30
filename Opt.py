@@ -36,25 +36,23 @@ def resSogRpm(par, sog, rpm):
     return res
 
 def fitSogRpm(sog, rpm, par0=[250.0,0.0,250.0,0.0]):
-    return scipy.optimize.leastsq(resSogRpm, par0,args=(sog,rpm))
+    return scipy.optimize.least_squares(resSogRpm, par0, args=(sog,rpm))
 
 if __name__ == '__main__':
     #load sog/rpm data
     data=np.loadtxt("/home/ubuntu/matumoto/aws/plot/sogrpm/sogrpm.csv", delimiter=",")
     data=np.transpose(data)
-    par,res=fitSogRpm(data[0], data[1], par0=[250.0,0.0,150.0,1000.0])
-    print("a=%f b=%f c=%f d=%f res=%f" % (par[0], par[1], par[2], par[3], res))
+    res=fitSogRpm(data[0], data[1], par0=[250.0,0.0,150.0,1000.0])
+    par=res.x
+    print("a=%f b=%f c=%f d=%f res=%f" % (par[0], par[1], par[2], par[3], res.cost))
     
-    sog=np.array([float(i) for i in range(0,20)])
-    rpm=np.array([funcSogRpm(par, float(i)) for i in range(0,20)])
-       
+    sog=np.array([float(i) for i in range(0,25)])
+    rpm=np.array([funcSogRpm(par, float(i)) for i in range(0,25)])       
     
     plt.figure(figsize=(8,5))
-    plt.plot(data[0], data[1], label="data")
-    plt.plot(sog, rpm, label="fit", linewidth=10, alpha=0.3)
+    plt.scatter(data[0], data[1], label="data", alpha=0.3)
+    plt.plot(sog, rpm, label="fit", linewidth=10, alpha=0.7)
     plt.xlabel("SOG(kts)")
     plt.ylabel("Rev(RPM)")
     plt.grid(True)
     plt.show()
-    
-    
