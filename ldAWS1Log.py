@@ -26,7 +26,6 @@ def calcStat(vec):
     else:
         return np.nan,np.nan,np.nan,np.nan
 
-
 def printStat(vname, vec):
     vmax, vmin, vavg, vstd = calcStat(vec)
     print("%s max: %f min: %f avg: %f std: %f" % (vname, vmax, vmin, vavg, vstd))
@@ -857,12 +856,14 @@ def loadAWS1State(fname, log_time):
     cog = np.array(cog)
     dcog = diffAWS1DataCog(tvel, cog)
     sog = np.array(sog)
+    dsog = diffAWS1DataVec(tvel, sog)
+    dsog = dsog * (1852.0/3600.0) # converting unit kts/sec into m/sec 
     depth = np.array(depth)
     file.close()
 
     return (
         {'t':tpos, 'lat':lat, 'lon':lon, 'alt':alt},
-        {'t':tvel, 'cog':cog, 'sog':sog, 'dcog':dcog}, 
+        {'t':tvel, 'cog':cog, 'sog':sog, 'dcog':dcog, 'dsog':dsog}, 
         {'t':tdp, 'depth':depth},
         {'t':tatt, 'roll':roll, 'pitch':pitch, 'yaw':yaw, 'droll':droll, 'dpitch':dpitch, 'dyaw':dyaw},
         {'t':t9dofc, 'mx':mx, 'my':my, 'mz':mz, 'ax':ax, 'ay':ay, 'az':az, 'gx':gx, 'gy':gy, 'gz':gz})
