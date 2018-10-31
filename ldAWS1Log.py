@@ -5,6 +5,7 @@ import subprocess
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import ldAWS1Video as ldv
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
@@ -165,6 +166,40 @@ def relateTimeRangeVecs(tx, ty, vx, vy, trng):
             rx.append(x)
             ry.append(y)
     return np.array(rx),np.array(ry)
+
+
+def relateTimeRangeVecs3D(tx, ty, tz, vx, vy, vz, trng):
+    ''' 
+       set of related points is calculated from two sets of time sequence:
+       (tx, vx),(ty,vy).  Because both sequence could have different time
+       intervals,  the values of y are linearly interpolated. 
+    '''
+    
+    rx = []
+    ry = []
+    rz = []
+    for tr in trng:
+        ix0s,ix0e = seekAWS1LogTime(tx, tr[0])
+        ix1s,ix1e = seekAWS1LogTime(tx, tr[1])
+        for ix in range(ix0e, ix1s):
+            iys,iye = seekAWS1LogTime(ty, tx[ix])
+            izs,ize = seekAWS1LogTime(tz, tx[ix])
+            if iys!=iye and izs!=ize: # out of range for y data. 
+                t = tx[ix]
+                x = vx[ix]
+                
+                t0 = ty[iys]
+                t1 = ty[iye]
+                y = (vy[iye] * (t - t0) + vy[iys] * (t1 - t)) / (t1 - t0)
+                
+                t0 = tz[izs]
+                t1 = tz[ize]
+                z = (vz[ize] * (t - t0) + vz[izs] * (t1 - t)) / (t1 - t0)
+                rx.append(x)
+                ry.append(y)
+                rz.append(z)
+                
+    return np.array(rx),np.array(ry),np.array(rz)
 
 def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
     '''
@@ -1040,6 +1075,19 @@ def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]
     rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
     return rx,ry
 
+def getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
+    trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
+    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
+    trmeng = findInRangeTimeRanges(tctrlst, lctrlst[0], 255, 152)
+    trng = intersectTimeRanges(trrud, trcog)
+    trng = intersectTimeRanges(trng, trmeng)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
+    rx,ry,rz= relateTimeRangeVecs3D(tstvel, tengr, tstvel, lstvel[1], lengr[0], lstvel[3], trng)
+#    rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)    
+#    rx,rz = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[3], trng)
+    return rx, ry, rz #sog, rpm, acl
+
 def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst, terr=[[]]):
     # sog/cog -3 < dcog < 3, 100 < rud < 154, 102 < meng < 152
     trdcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
@@ -1088,3 +1136,20 @@ def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
     csvname=parx+pary+".csv"
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
+
+def plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+    figname=parx+pary+parz+".png"
+    fig=plt.figure()
+    ax=fig.gca(projection='3d')
+    
+    ax.scatter(rx, ry, rz)
+    ax.set_xlabel(strx[0]+" ["+strx[1]+"]")
+    ax.set_ylabel(stry[0]+" ["+stry[1]+"]")
+    ax.set_zlabel(strz[0]+" ["+strz[1]+"]")
+    plt.savefig(path+"/"+figname)
+    plt.clf()
+    csvname=parx+pary+parz+".csv"
+    rel=np.c_[rx,ry,rz]
+    np.savetxt(path+"/"+csvname, rel, delimiter=',')
+    
+    

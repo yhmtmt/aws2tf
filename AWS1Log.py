@@ -131,7 +131,7 @@ str_engd=[["Alternator Output", "V"], ["Engine Temperature", "DegC"], ["Fuel Con
 par_stpos=['lat','lon','alt']
 str_stpos=[["Latitude", "Deg"], ["Longitude", "Deg"], ["Altitude", "m"]]
 par_stvel=['cog','sog', 'dcog', 'dsog']
-str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Rate of Cource Change", "deg/s"], ["Acceleration", "m/s"]]
+str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Rate of Cource Change", "deg/s"], ["Acceleration", "m/ss"]]
 par_stdp=['depth']
 str_stdp=[["Depth","m"]]
 par_statt=['roll','pitch','yaw','droll', 'dpitch', 'dyaw']
@@ -464,6 +464,8 @@ class AWS1Log:
         rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst, terr)
         ldl.plotAWS1DataRelation(path, "sog", "cog", str_stvel[1], str_stvel[0], rx, ry)
 
+        rx,ry,rz=ldl.getRelSogRpmAcl(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
+        ldl.plotAWS1DataRelation3D(path, "sog", "rpm", "dsog", str_stvel[1], str_engr[0], str_stvel[3], rx, ry, rz)
 
 def plotAWS1MstatSogRpm(path_log, logs, path_plot):
     if not os.path.exists(path_plot):
