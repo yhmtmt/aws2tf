@@ -12,6 +12,7 @@ import requests
 import Odet
 import cv2
 import ldAWS1Log as ldl
+import Opt as opt
 
 #pdb.set_trace()
 # Ship coordinate
@@ -176,13 +177,13 @@ class AWS1Log:
 
         return log_time
 
-    def getRelSogRpm(self, ts=0.0, te=sys.float_info.max):
+    def getRelSogRpmAcl(self, ts=0.0, te=sys.float_info.max):
         lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
         terr=ldl.getErrorAtt(tstatt, lstatt)
         lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
         lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
-        return ldl.getRelSogRpm(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
+        return ldl.getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
     
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
@@ -459,38 +460,81 @@ class AWS1Log:
         
         rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotAWS1DataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
-        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
-        ldl.plotAWS1DataRelation(path, "sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
         rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst, terr)
         ldl.plotAWS1DataRelation(path, "sog", "cog", str_stvel[1], str_stvel[0], rx, ry)
-
+        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
+        ldl.plotAWS1DataRelation(path, "sog", "rpm", str_stvel[1], str_engr[0], rx, ry)
         rx,ry,rz=ldl.getRelSogRpmAcl(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotAWS1DataRelation3D(path, "sog", "rpm", "dsog", str_stvel[1], str_engr[0], str_stvel[3], rx, ry, rz)
 
-def plotAWS1MstatSogRpm(path_log, logs, path_plot):
+def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
     if not os.path.exists(path_plot):
         os.mkdir(path_plot)
 
     path_sogrpm = path_plot + "/sogrpm"    
     if not os.path.exists(path_sogrpm):
         os.mkdir(path_sogrpm)
-    else:
-        print("%s exists. Overwrite? (y/n)" % path)
+    elif not force:        
+        print("%s exists. Overwrite? (y/n)" % path_sogrpm)
         yorn=sys.stdin.readline().strip()
         if yorn != "y":
             return
 
     log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_plot+"/"+log_time.decode("utf-8")):          
+            log.load(path_log, int(log_time.decode("utf-8")))
+            log.plot(0, sys.float_info.max, path_plot)
+    
     rx = np.array([])
     ry = np.array([])
     for log_time in logs:
-        log.load(path_log, int(log_time.decode("utf-8")))
-        _rx,_ry=log.getRelSogRpm(0, sys.float_info.max)     
-        rx = np.concatenate((rx,_rx), axis=0)
-        ry = np.concatenate((ry,_ry), axis=0)
+        data=np.loadtxt(path_plot+"/"+log_time.decode('utf-8')+"/sogrpm.csv", delimiter=",")     
+        data=np.transpose(data)
+        if data.shape[0] != 2:
+            continue
+       
+        rx = np.concatenate((rx,data[0]), axis=0)
+        ry = np.concatenate((ry,data[1]), axis=0)
+        
     ldl.plotAWS1DataRelation(path_sogrpm, par_stvel[1], par_engr[0],
-                             str_stvel[1], str_engr[1], rx, ry)
-   
+                             str_stvel[1], str_engr[0], rx, ry)
+    res=opt.fitSogRpm(rx, ry, par0=[250.0, 0.0, 150.0, 1000.0])
+    par = res.x
+    plt.scatter(rx, ry, label="data", alpha=0.3)
+    x=np.array([float(i) for i in range(0,25)])
+    y=np.array([opt.funcSogRpm(par, float(i)) for i in range(0,25)])
+    plt.plot(x, y, label="fit", color='r', linewidth=3)
+    plt.xlabel(str_stvel[1][0]+"["+str_stvel[1][1]+"]")
+    plt.ylabel(str_engr[0][0]+"["+str_engr[0][1]+"]")
+    figfile=par_stvel[1]+par_engr[0]+".png"
+    plt.savefig(path_sogrpm+"/"+figfile)
+    plt.clf()
+
+    rx = np.array([])
+    ry = np.array([])
+    rz = np.array([])
+    for log_time in logs:
+        data=np.loadtxt(path_plot+"/"+log_time.decode('utf-8')+"/sogrpmdsog.csv", delimiter=",")
+        data=np.transpose(data)
+        if data.shape[0] != 3:
+            continue;
+        rx = np.concatenate((rx,data[0]), axis=0)
+        ry = np.concatenate((ry,data[1]), axis=0)
+        rz = np.concatenate((rz,data[2]), axis=0)
+        
+    ldl.plotAWS1DataRelation3D(path_sogrpm,
+                               par_stvel[1], par_engr[0], par_stvel[3],         
+                               str_stvel[1], str_engr[0], str_stvel[3],
+                               rx, ry, rz)
+
+    rx=np.array([ry[i] - opt.funcSogRpm(par, rx[i]) for i in range(rx.shape[0])])
+    ldl.plotAWS1DataRelation(path_sogrpm, "rpm_rpm_e", "acl",
+                             ["Difference from stable point", "RPM"],
+                             ["Acceleration",  "m/ss"], rx, rz)
+    
+    csvfile="parSogRpm.csv"
+    np.savetxt(path_sogrpm+"/"+csvfile, par, delimiter=',')    
     
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
