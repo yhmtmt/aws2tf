@@ -1125,9 +1125,13 @@ def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
 
         np.savetxt(path+"/"+csvname, rel, delimiter=',')
         
-def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry):
+def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     figname=parx+pary+".png"
-    plt.scatter(rx,ry)
+    if density:
+        plt.hist2d(rx,ry, (50,50), cmap=plt.cm.jet)
+        plt.colorbar()
+    else:
+        plt.scatter(rx,ry)
     plt.xlabel(strx[0]+" ["+strx[1]+"]")
     plt.ylabel(stry[0]+" ["+stry[1]+"]")
     plt.savefig(path+"/"+figname)
@@ -1148,6 +1152,7 @@ def plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz)
     ax.set_zlabel(strz[0]+" ["+strz[1]+"]")
     plt.savefig(path+"/"+figname)
     plt.clf()
+    plt.close(fig)
     csvname=parx+pary+parz+".csv"
     rel=np.c_[rx,ry,rz]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
