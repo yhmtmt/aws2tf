@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import ldAWS1Video as ldv
+import Opt as opt
 
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
 chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
@@ -1141,6 +1142,36 @@ def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
+def plotAWS1SogRpm(path, parx, pary, strx, stry, rx, ry):
+    res=opt.fitSogRpm(rx, ry, par0=[250.0, 0.0, 150.0, 1000.0])
+    par = res.x
+    plt.scatter(rx, ry, label="data", alpha=0.3)
+    x=np.array([float(i) for i in range(0,25)])
+    y=np.array([opt.funcSogRpm(par, float(i)) for i in range(0,25)])
+    plt.plot(x, y, label="fit", color='r', linewidth=3)
+    plt.xlabel(strx[0]+" ["+strx[1]+"]")
+    plt.ylabel(stry[0]+" ["+stry[1]+"]")  
+    figfile=parx+pary+".png"
+    plt.savefig(path+"/"+figfile)
+    plt.clf()
+    
+    csvname=parx+pary+".csv"    
+    rel=np.c_[rx,ry]
+    np.savetxt(path+"/"+csvname, rel, delimiter=',')
+    csvname="par"+parx+pary+".csv"
+    np.savetxt(path+"/"+csvname, par, delimiter=',')    
+    
+def plotAWS1SogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+    par = np.loadtxt(path+"/par"+parx+pary+".csv")
+    plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz)
+    
+    rx=np.array([ry[i] - opt.funcSogRpm(par, rx[i]) for i in range(rx.shape[0])])
+    plotAWS1DataRelation(path, "rpm_rpm_e", "acl",
+                             ["Difference from stable point", stry[1]],
+                             strz, rx, rz)
+
+
+    
 def plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     figname=parx+pary+parz+".png"
     fig=plt.figure()

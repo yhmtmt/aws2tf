@@ -3,8 +3,8 @@ import argparse
 import sys
 import os
 import ldAWS1Log as ldl
-import pdb
 
+import pdb
 pdb.set_trace()
 
 parser = argparse.ArgumentParser()
@@ -20,6 +20,8 @@ parser.add_argument("--list", action="store_true", help="List logs")
 parser.add_argument("--plot", action="store_true", help="Generate Plots.")
 parser.add_argument("--play", action="store_true", help="Play log.")
 parser.add_argument("--force", action="store_true", help="Force calculation")
+parser.add_argument("--debug", action="store_true", help="Debug mode")
+
 args=parser.parse_args()
 nlog=args.nlog
 mstat=args.mstat
