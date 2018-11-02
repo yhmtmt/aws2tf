@@ -517,8 +517,18 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
                           str_stvel[1], str_engr[0], str_stvel[3],
                           rx, ry, rz)
 
-    
-    
+def printStat(path_log, logs, path_plot, strpars):
+    log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_plot+"/"+log_time.decode("utf-8")):          
+            log.load(path_log, int(log_time.decode("utf-8")))
+            log.plot(0, sys.float_info.max, path_plot)
+
+    valss=ldl.loadStatCsvs(path_plot, logs, strpars)
+    print(strpars)
+    for vals in valss:
+        print(vals)               
+        
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
     log = AWS1Log()

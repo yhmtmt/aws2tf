@@ -367,11 +367,16 @@ def listAWS1Logs(path_aws1_log):
         return -1
     return logs
 
+def convTtoStr(t):
+        command=['t2str', t]
+        str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        return str_log_time
+    
+
 def printAWS1Logs(logs):
     ilog = 0
     for log in logs:
-        command=['t2str', log]
-        str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        str_log_time = convTtoStr(log)
         print(("%d:"%ilog)+log.decode('utf-8') + ":" + str_log_time.decode('utf-8'))
         ilog = ilog + 1
     
@@ -1047,6 +1052,73 @@ def loadAWS1CtrlInst(fname, log_time):
     file.close()
     return {'t':t, 'acs':acs, 'meng':meng, 'seng':seng, 'rud':rud}
 
+
+def loadStatCsv(fname):
+    file=open(fname)
+    header=file.readline().strip().replace(" ", "").split(',')
+    irec=0
+    ipar=0
+    imax=0
+    imin=0
+    iavg=0
+    idev=0
+    for record in header:
+        if(record == "name"):
+            ipar=irec
+        elif(record == "max"):
+            imax=irec
+        elif(record == "min"):
+            imin=irec
+        elif(record == "avg"):
+            iavg=irec
+        elif(record == "dev"):
+            idev=irec
+        irec+=1
+
+    stat={}
+        
+    while True:
+        line = file.readline().strip().split(',')
+        if not line or len(line) == 1:
+            break
+        stat[line[ipar]]={"max":float(line[imax]), "min":float(line[imin]),
+                          "avg":float(line[iavg]), "dev":float(line[idev])}
+    return stat
+
+def loadStatCsvs(path_plot, logs, strpars):
+    valss=[]
+    for log_time in logs:
+        fname=path_plot+"/"+log_time.decode('utf-8')+"/stat.csv"
+        stat=loadStatCsv(fname)
+        vals=[]
+        for strpar in strpars:
+            name_stat=strpar.split(".")
+            if len(name_stat) == 1: #<name>
+                if(name_stat[0]=="t"):
+                    vals.append(int(log_time))
+                    continue
+                elif (name_stat[0]=="tstr"):
+                    vals.append(convTtoStr(log_time).decode('utf-8'))
+                    continue                
+                elif not(name_stat[0] in stat.keys()):
+                    print ("No item named %s in stat.csv" % name_stat[0]) 
+                    break
+                
+                for rec in stat[name_stat[0]].keys():
+                    vals.append(stat[name_stat[0][rec]])
+            elif len(name_stat) == 2: # <name>.<stat>
+                if not(name_stat[0] in stat.keys()):
+                    print ("No item named %s in stat.csv" % name_stat[0])
+                    break
+                if not(name_stat[1] in stat[name_stat[0]].keys()):
+                    print ("No stat named %s in stat.csv" % name_stat[1])
+                    break
+                vals.append(stat[name_stat[0]][name_stat[1]])
+            else:
+                break;
+        valss.append(vals)
+    return valss
+                            
 def getListAndTime(par, data):
     l = listAWS1DataSection(par, data)
     t = data['t']

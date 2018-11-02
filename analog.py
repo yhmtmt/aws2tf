@@ -15,7 +15,9 @@ parser.add_argument("--ts", type=float, default=0.0, help="Sta11rt time in sec")
 parser.add_argument("--te", type=float, default=sys.float_info.max, help="End time in sec")
 parser.add_argument("--nlog", type=int, default=-1, help="Log number used in plot, and play.")
 parser.add_argument("--logs", type=str, default="", help="File of log list used in calculation through multiple logs")
-parser.add_argument("--mstat", type=str, default="", help="Type of stats with multiple logs") 
+parser.add_argument("--mstat", type=str, default="", help="Type of stats with multiple logs")
+parser.add_argument("--pstat", type=str, default="", help="Print statistics")
+
 parser.add_argument("--list", action="store_true", help="List logs")
 parser.add_argument("--plot", action="store_true", help="Generate Plots.")
 parser.add_argument("--play", action="store_true", help="Play log.")
@@ -25,6 +27,7 @@ parser.add_argument("--debug", action="store_true", help="Debug mode")
 args=parser.parse_args()
 nlog=args.nlog
 mstat=args.mstat
+pstat=args.pstat
 logs=args.logs
 path_log=args.path_log
 path_plot=args.path_plot
@@ -46,7 +49,6 @@ if args.list:
     
 if len(logs) != 0:
     logs = ldl.loadAWS1Logs(path_log, logs)
-    ldl.printAWS1Logs(logs)
 
 def plotAWS1Log(log, log_time, force=False):
     if not os.path.exists(path_plot):
@@ -67,7 +69,7 @@ if args.plot:
 if args.play:
     log.play(ts,te)
     
-if len(mstat) != 0:
+if len(mstat) != 0:    
     if mstat == "sogrpm":
         AWS1Log.plotAWS1MstatSogRpm(path_log, logs, path_plot, args.force)
     elif mstat == "plot":
@@ -78,3 +80,7 @@ if len(mstat) != 0:
     else:
         print("Unknown mult-stat %s" % mstat)
             
+if len(pstat) != 0:
+    strpars=pstat.split(",")
+    AWS1Log.printStat(path_log, logs, path_plot, strpars)
+    
