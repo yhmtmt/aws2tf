@@ -19,7 +19,7 @@ def calcTimeStat(tvec):
 
 def printTimeStat(tvec):
     ttotal = tvec[-1] - tvec[0]
-    dtmax, dtmin, dtavg, dtstd = calcTimeStat(tvec)
+    dtavg, dtmax, dtmin, dtstd = calcTimeStat(tvec)
     print("Total time %f  Time step min: %f avg: %f max: %f std: %f" % (ttotal, dtmin, dtavg, dtmax, dtstd)) 
 
 def calcStat(vec):
@@ -29,11 +29,11 @@ def calcStat(vec):
         return np.nan,np.nan,np.nan,np.nan
 
 def printStat(vname, vec):
-    vmax, vmin, vavg, vstd = calcStat(vec)
+    vavg, vmax, vmin, vstd = calcStat(vec)
     print("%s max: %f min: %f avg: %f std: %f" % (vname, vmax, vmin, vavg, vstd))
 
 def saveStat(file, vname, vec):
-    vmax, vmin, vavg, vstd = calcStat(vec)
+    vavg, vmax, vmin, vstd = calcStat(vec)
     str="%s, %f, %f, %f, %f\n" % (vname, vmax, vmin, vavg, vstd)
     file.write(str)
     
