@@ -2,10 +2,8 @@ import AWS1Log
 import argparse
 import sys
 import os
+import re
 import ldAWS1Log as ldl
-
-import pdb
-pdb.set_trace()
 
 parser = argparse.ArgumentParser()
 
@@ -17,6 +15,7 @@ parser.add_argument("--nlog", type=int, default=-1, help="Log number used in plo
 parser.add_argument("--logs", type=str, default="", help="File of log list used in calculation through multiple logs")
 parser.add_argument("--mstat", type=str, default="", help="Type of stats with multiple logs")
 parser.add_argument("--pstat", type=str, default="", help="Print statistics")
+parser.add_argument("--sel", type=str, default="", help="Select logs by condition <par>"<" or ">"<value> from logs given in --logs")
 
 parser.add_argument("--list", action="store_true", help="List logs")
 parser.add_argument("--plot", action="store_true", help="Generate Plots.")
@@ -28,11 +27,16 @@ args=parser.parse_args()
 nlog=args.nlog
 mstat=args.mstat
 pstat=args.pstat
+sel=args.sel
 logs=args.logs
 path_log=args.path_log
 path_plot=args.path_plot
 ts=args.ts
 te=args.te
+
+if args.debug:
+    import pdb
+    pdb.set_trace()
 
 # log files to be loaded.
 if args.plot or args.play:    
@@ -83,4 +87,29 @@ if len(mstat) != 0:
 if len(pstat) != 0:
     strpars=pstat.split(",")
     AWS1Log.printStat(path_log, logs, path_plot, strpars)
-    
+
+if len(sel):
+    m=sel.split("<")
+    if len(m)!=2:
+        m=sel.split(">")
+    else:
+        if m[1][0] == '=':
+            cond=[m[0],'<=',m[1][1:]]
+        else:
+            cond=[m[0],'<',m[1]]
+        
+    if len(m)!=2:
+        print ("Unknown operator used, or any operator is not used in " + sel)
+        exit()
+    else:
+        if m[1][0] == '=':
+            cond=[m[0],'<=',m[1][1:]]
+        else:
+            cond=[m[0],'>',m[1]]
+        
+        
+    logs = AWS1Log.selectLogByCond(path_log, logs, path_plot, cond)
+    for log in logs:
+        print (log)
+
+

@@ -528,7 +528,27 @@ def printStat(path_log, logs, path_plot, strpars):
     print(strpars)
     for vals in valss:
         print(vals)               
-        
+
+def selectLogByCond(path_log, logs, path_plot, cond):
+    sellogs=[]
+    valss=ldl.loadStatCsvs(path_plot, logs, ["t", cond[0]])
+    for vals in valss:
+        val = float(cond[2])
+        if cond[1] == "<":
+            if vals[1] < val:
+                sellogs.append(vals[0])
+        elif cond[1] == ">":
+            if vals[1] > val:
+                sellogs.append(vals[0])
+        elif cond[1] == "<=":
+            if vals[1] <= val:
+                sellogs.append(vals[0])
+        elif cond[1] == ">=":
+            if vals[1] >= val:
+                sellogs.append(vals[0])                                        
+                
+    return sellogs
+
 if __name__ == '__main__':
     #loadAWS1LogFiles("/mnt/c/cygwin64/home/yhmtm/aws/log")
     log = AWS1Log()

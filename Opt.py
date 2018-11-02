@@ -3,9 +3,6 @@ import numpy as np
 import scipy.optimize
 import sys
 import matplotlib.pyplot as plt
-import pdb
-
-pdb.set_trace()
 
 def funcSogRpm(par, sog):
     '''
@@ -39,6 +36,9 @@ def fitSogRpm(sog, rpm, par0=[250.0,0.0,250.0,0.0]):
     return scipy.optimize.least_squares(resSogRpm, par0, args=(sog,rpm))
 
 if __name__ == '__main__':
+    import pdb
+    pdb.set_trace()
+
     #load sog/rpm data
     data=np.loadtxt("/home/ubuntu/matumoto/aws/plot/sogrpm/sogrpm.csv", delimiter=",")
     data=np.transpose(data)
