@@ -4,6 +4,9 @@ import scipy.optimize
 import sys
 import matplotlib.pyplot as plt
 
+
+############## model for sog/rpm relationship ################
+# sog->rpm function
 def funcSogRpm(par, sog):
     '''
     par:[a,b,c,d]
@@ -26,14 +29,50 @@ def funcSogRpm(par, sog):
     else:
         rpm = sys.float_info.max
     return rpm
-    
+
+# residual rpm - funcSogRpm(sog)
 def resSogRpm(par, sog, rpm):
     rpm_p = np.array([funcSogRpm(par, sog[i]) for i in range(rpm.shape[0])])
     res = rpm_p - rpm
     return res
 
+# fitter for funcSogRpm using least_squares
 def fitSogRpm(sog, rpm, par0=[250.0,0.0,250.0,0.0]):
     return scipy.optimize.least_squares(resSogRpm, par0, args=(sog,rpm))
+
+
+######### calculation of linear acceleration parameter ############
+# -m du - X_du du -X_u u -X_uu |u|u + K_l u n + k_q |n| n = 0
+#
+# u > 0
+#   funcSogRpm(u) > n
+#      n > 0 (acceleration) ---<1>
+#      n < 0 (inverse thrust deceleration) ---<2>
+#   funcSogRpm(u) < n
+#      n > 0 (passive deceleration) ---<3>
+#      n < 0 (no possibility because n > funcSogRpm(u) > 0)
+# u < 0
+#   funcSogRpm(u) > n
+#      n > 0 (no possibility because n < funcSogRpm(u) < 0)
+#      n < 0 (negative acceleration) ---<4>
+#   funcSogRpm(u) < n
+#      n > 0 (inverse thrust negative deceleration) ---<5>
+#      n < 0 (passive negative deceleration) ---<6>
+#
+# par: m, X_du, X_u, X_uu, K_l, K_q
+def resXAclPVelPRev(par, du, u, n): # <1>, <3> 
+    return -par[0] * du - par[1] * du - par[2] * u + par[3] * u * u - par[4] * u * n + par[5] * n * n
+
+def resXAclPVelNRev(par, du, u, n): # <2>
+    return -par[0] * du - par[1] * du - par[2] * u + par[3] * u * u - par[4] * u * n - par[5] * n * n
+
+def rexXAclNVelNRev(par, du, u, n): # <4>, <6>
+    return -par[0] * du - par[1] * du - par[2] * u - par[3] * u * u - par[4] * u * n - par[5] * n * n
+
+def rexXAclNVelPRev(par, du, u, n): # <5>
+    return -par[0] * du - par[1] * du - par[2] * u - par[3] * u * u - par[4] * u * n + par[5] * n * n
+
+
 
 if __name__ == '__main__':
     import pdb
