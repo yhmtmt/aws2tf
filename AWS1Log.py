@@ -334,7 +334,7 @@ class AWS1Log:
                     bodet=not(bodet)
             tcur += dt
 
-    def plot(self, ts=0, te=sys.float_info.max, path='./'):
+    def proc(self, ts=0, te=sys.float_info.max, path='./'):
         lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
         luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)
         lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
@@ -468,11 +468,11 @@ class AWS1Log:
         ldl.plotAWS1SogRpmAcl(path, par_stvel[1], par_engr[0], par_stvel[3], str_stvel[1], str_engr[0], str_stvel[3], rx, ry, rz)
         
 
-def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
-    if not os.path.exists(path_plot):
-        os.mkdir(path_plot)
+def plotAWS1OpSogRpm(path_log, logs, path_result, force=False):
+    if not os.path.exists(path_result):
+        os.mkdir(path_result)
 
-    path_sogrpm = path_plot + "/sogrpm"    
+    path_sogrpm = path_result + "/sogrpm"    
     if not os.path.exists(path_sogrpm):
         os.mkdir(path_sogrpm)
     elif not force:        
@@ -483,14 +483,14 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
 
     log = AWS1Log()
     for log_time in logs:
-        if not os.path.exists(path_plot+"/"+log_time.decode("utf-8")):          
-            log.load(path_log, int(log_time.decode("utf-8")))
-            log.plot(0, sys.float_info.max, path_plot)
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.plot(0, sys.float_info.max, path_result)
     
     rx = np.array([])
     ry = np.array([])
     for log_time in logs:
-        data=np.loadtxt(path_plot+"/"+log_time.decode('utf-8')+"/sogrpm.csv", delimiter=",")     
+        data=np.loadtxt(path_result+"/"+log_time+"/sogrpm.csv", delimiter=",")     
         data=np.transpose(data)
         if data.shape[0] != 2:
             continue
@@ -504,7 +504,7 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
     ry = np.array([])
     rz = np.array([])
     for log_time in logs:
-        data=np.loadtxt(path_plot+"/"+log_time.decode('utf-8')+"/sogrpmdsog.csv", delimiter=",")
+        data=np.loadtxt(path_result+"/"+log_time+"/sogrpmdsog.csv", delimiter=",")
         data=np.transpose(data)
         if data.shape[0] != 3:
             continue;
@@ -517,21 +517,21 @@ def plotAWS1MstatSogRpm(path_log, logs, path_plot, force=False):
                           str_stvel[1], str_engr[0], str_stvel[3],
                           rx, ry, rz)
 
-def printStat(path_log, logs, path_plot, strpars):
+def printStat(path_log, logs, path_result, strpars):
     log = AWS1Log()
     for log_time in logs:
-        if not os.path.exists(path_plot+"/"+log_time.decode("utf-8")):          
-            log.load(path_log, int(log_time.decode("utf-8")))
-            log.plot(0, sys.float_info.max, path_plot)
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.plot(0, sys.float_info.max, path_result)
 
-    valss=ldl.loadStatCsvs(path_plot, logs, strpars)
+    valss=ldl.loadStatCsvs(path_result, logs, strpars)
     print(strpars)
     for vals in valss:
         print(vals)               
 
-def selectLogByCond(path_log, logs, path_plot, cond):
+def selectLogByCond(path_log, logs, path_result, cond):
     sellogs=[]
-    valss=ldl.loadStatCsvs(path_plot, logs, ["t", cond[0]])
+    valss=ldl.loadStatCsvs(path_result, logs, ["t", cond[0]])
     for vals in valss:
         val = float(cond[2])
         if cond[1] == "<":

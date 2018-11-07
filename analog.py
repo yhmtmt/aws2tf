@@ -8,29 +8,29 @@ import ldAWS1Log as ldl
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--path_log", type=str, default="./", help="Path to the AWS1's log directory")
-parser.add_argument("--path_plot", type=str, default="./", help="Path plotted images to be stored.")
-parser.add_argument("--ts", type=float, default=0.0, help="Sta11rt time in sec")
+parser.add_argument("--path_result", type=str, default="./", help="Path plotted images to be stored.")
+parser.add_argument("--ts", type=float, default=0.0, help="Start time in sec")
 parser.add_argument("--te", type=float, default=sys.float_info.max, help="End time in sec")
-parser.add_argument("--nlog", type=int, default=-1, help="Log number used in plot, and play.")
-parser.add_argument("--logs", type=str, default="", help="File of log list used in calculation through multiple logs")
-parser.add_argument("--mstat", type=str, default="", help="Type of stats with multiple logs")
+parser.add_argument("--nlog", type=int, default=-1, help="Log selection by log number.")
+parser.add_argument("--logs", type=str, default="", help="Log selecgion by file of log list")
+parser.add_argument("--all", action="store_true", help="Log selection, all logs in the path_log")
+parser.add_argument("--op", type=str, default="", help="Type of stats with multiple logs")
 parser.add_argument("--pstat", type=str, default="", help="Print statistics")
 parser.add_argument("--sel", type=str, default="", help="Select logs by condition <par>"<" or ">"<value> from logs given in --logs")
-
-parser.add_argument("--list", action="store_true", help="List logs")
-parser.add_argument("--plot", action="store_true", help="Generate Plots.")
-parser.add_argument("--play", action="store_true", help="Play log.")
-parser.add_argument("--force", action="store_true", help="Force calculation")
+parser.add_argument("--list", action="store_true", help="List logs selected")
+parser.add_argument("--force", action="store_true", help="Force process all logs")
+parser.add_argument("--new", action="store_true", help="Process only new logs")
 parser.add_argument("--debug", action="store_true", help="Debug mode")
 
 args=parser.parse_args()
 nlog=args.nlog
-mstat=args.mstat
+op=args.op
 pstat=args.pstat
 sel=args.sel
-logs=args.logs
+logsfile=args.logs
+logs=[]
 path_log=args.path_log
-path_plot=args.path_plot
+path_result=args.path_result
 ts=args.ts
 te=args.te
 
@@ -38,55 +38,58 @@ if args.debug:
     import pdb
     pdb.set_trace()
 
-# log files to be loaded.
-if args.plot or args.play:    
-    log_time = ldl.selectAWS1Log(path_log, nlog)
-    if log_time == -1:
-        print ("No log is found, or specified.")
-        exit()
-    log = AWS1Log.AWS1Log()
-    log.load(path_log, log_time)
-    
-if args.list:
-    logsall=ldl.listAWS1Logs(path_log)
-    ldl.printAWS1Logs(logsall)  
-    
-if len(logs) != 0:
-    logs = ldl.loadAWS1Logs(path_log, logs)
+if args.all:
+    logs = ldl.listAWS1Logs(path_log)
+else:
+    if len(logsfile) != 0: # log list is given
+        logs = ldl.loadAWS1Logs(path_log, logsfile)
 
-def plotAWS1Log(log, log_time, force=False):
-    if not os.path.exists(path_plot):
-        os.mkdir(path_plot)
+    if nlog != -1: # log number is given
+        log_time = ldl.selectAWS1Log(path_log, nlog)
+        logs.append("%s" % log_time)
+
+    if len(logs) == 0:
+        print ("No log is specified please select.")
+        log_time = ldl.selectAWS1Log(path_log)
+        logs.append("%s" % log_time)
+
+if args.list:
+    ldl.printAWS1Logs(logs)
     
-    path="%s/%d" % (path_plot, log_time)
-    if not os.path.exists(path) or force:        
-        log.plot(ts,te, path)
-    else:
+def procAWS1Log(log, log_time, force=False, new=True):
+    if not os.path.exists(path_result):
+        os.mkdir(path_result)
+    
+    path="%s/%d" % (path_result, log_time)
+    if not os.path.exists(path) or force:
+        log.proc(ts,te, path)
+    elif new:
+        print("Skip processing " + path)
+    else:        
         print("%s exists. Overwrite? (y/n)" % path)
         yorn=sys.stdin.readline().strip()
         if yorn == "y":
-            log.plot(ts,te,path)
+            log.proc(ts,te,path)  
     
-if args.plot:
-    plotAWS1Log(log, log_time, args.force)
-    
-if args.play:
-    log.play(ts,te)
-    
-if len(mstat) != 0:    
-    if mstat == "sogrpm":
-        AWS1Log.plotAWS1MstatSogRpm(path_log, logs, path_plot, args.force)
-    elif mstat == "plot":
+if len(op) != 0:    
+    if op == "sogrpm":
+        AWS1Log.plotAWS1OpSogRpm(path_log, logs, path_result, args.force)
+    elif op == "proc":
         log = AWS1Log.AWS1Log()
         for log_time in logs:
             log.load(path_log, int(log_time))
-            plotAWS1Log(log, int(log_time), args.force)        
+            procAWS1Log(log, int(log_time), args.force, args.new)
+    elif op == "play":
+        log = AWS1Log.AWS1Log()
+        for log_time in logs:
+            log.load(path_log, int(log_time))
+            log.play(ts, te)       
     else:
-        print("Unknown mult-stat %s" % mstat)
+        print("Unknown Operation %s" % op)
             
 if len(pstat) != 0:
     strpars=pstat.split(",")
-    AWS1Log.printStat(path_log, logs, path_plot, strpars)
+    AWS1Log.printStat(path_log, logs, path_result, strpars)
 
 if len(sel):
     m=sel.split("<")
@@ -108,7 +111,7 @@ if len(sel):
             cond=[m[0],'>',m[1]]
         
         
-    logs = AWS1Log.selectLogByCond(path_log, logs, path_plot, cond)
+    logs = AWS1Log.selectLogByCond(path_log, logs, path_result, cond)
     for log in logs:
         print (log)
 

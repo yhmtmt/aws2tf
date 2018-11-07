@@ -353,7 +353,7 @@ def loadAWS1Logs(path_log, list_file):
         
         path=path_log + "/" + log_time
         if(os.path.isdir(path)):
-            logs.append(log_time.encode('utf-8'))
+            logs.append(log_time)
         else:
             print("No such log: %s" % path)
     return logs
@@ -365,22 +365,22 @@ def listAWS1Logs(path_aws1_log):
     logs = re.findall(rb"[0-9]{17}", files)
     if len(logs) == 0:
         return -1
-    return logs
+    strlogs=[ log.decode('utf-8') for log in logs ]
+    return strlogs
 
 def convTtoStr(t):
         command=['t2str', t]
         str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-        return str_log_time
+        return str_log_time.decode('utf-8')
     
 
 def printAWS1Logs(logs):
     ilog = 0
     for log in logs:
         str_log_time = convTtoStr(log)
-        print(("%d:"%ilog)+log.decode('utf-8') + ":" + str_log_time.decode('utf-8'))
+        print(("%d:"%ilog)+log + ":" + str_log_time)
         ilog = ilog + 1
-    
-
+   
 def selectAWS1Log(path_aws1_log, log_number=-1):
     logs=listAWS1Logs(path_aws1_log)
     if log_number == -1:
@@ -1085,10 +1085,10 @@ def loadStatCsv(fname):
                           "avg":float(line[iavg]), "dev":float(line[idev])}
     return stat
 
-def loadStatCsvs(path_plot, logs, strpars):
+def loadStatCsvs(path_result, logs, strpars):
     valss=[]
     for log_time in logs:
-        fname=path_plot+"/"+log_time.decode('utf-8')+"/stat.csv"
+        fname=path_result+"/"+log_time+"/stat.csv"
         stat=loadStatCsv(fname)
         vals=[]
         for strpar in strpars:
@@ -1098,7 +1098,7 @@ def loadStatCsvs(path_plot, logs, strpars):
                     vals.append(int(log_time))
                     continue
                 elif (name_stat[0]=="tstr"):
-                    vals.append(convTtoStr(log_time).decode('utf-8'))
+                    vals.append(convTtoStr(log_time))
                     continue                
                 elif not(name_stat[0] in stat.keys()):
                     print ("No item named %s in stat.csv" % name_stat[0]) 
