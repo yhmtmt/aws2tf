@@ -14,7 +14,7 @@ chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "eng
 
 
 def calcTimeStat(tvec):
-    dtvec = diffAWS1Data(tvec)
+    dtvec = diffData(tvec)
     return calcStat(dtvec)
 
 def printTimeStat(tvec):
@@ -37,14 +37,14 @@ def saveStat(file, vname, vec):
     str="%s, %f, %f, %f, %f\n" % (vname, vmax, vmin, vavg, vstd)
     file.write(str)
     
-def diffAWS1Data(vec):
+def diffData(vec):
     ''' Calculates difference of each subsequent data. '''
     vnew=np.empty(shape=(vec.shape[0]-1), dtype=vec.dtype)
     for i in range(vnew.shape[0]):
         vnew[i] = vec[i+1] - vec[i]
     return vnew
 
-def diffAWS1DataVec(t, vec):
+def diffDataVec(t, vec):
     ''' Calculates time derivative of the sequence.'''
     dvec=np.zeros(shape=(vec.shape), dtype=vec.dtype)
     for i in range(1, dvec.shape[0]-1):
@@ -54,7 +54,7 @@ def diffAWS1DataVec(t, vec):
         dvec[i] = idt * (vec[i+1] - vec[i-1])
     return dvec
 
-def diffAWS1DataYaw(t, yaw):
+def diffDataYaw(t, yaw):
     ''' Calculates yaw rate from the time sequence of yaw.'''
     dyaw = np.zeros(shape=t.shape, dtype=float)
 
@@ -71,7 +71,7 @@ def diffAWS1DataYaw(t, yaw):
         dyaw[i] = idt * diff
     return dyaw
 
-def diffAWS1DataCog(t, cog):
+def diffDataCog(t, cog):
     ''' Calculates course changing rate from the time sequence of cog'''
     dcog = np.zeros(shape=t.shape, dtype=float)
 
@@ -88,7 +88,7 @@ def diffAWS1DataCog(t, cog):
         dcog[i] = idt * diff
     return dcog
 
-def integrateAWS1Data(t, vec):
+def integrateData(t, vec):
     ''' calculates time integral of the given sequence.'''
     if len(t) == 0:
         return 0
@@ -152,10 +152,10 @@ def relateTimeRangeVecs(tx, ty, vx, vy, trng):
     rx = []
     ry = []
     for tr in trng:
-        ix0s,ix0e = seekAWS1LogTime(tx, tr[0])
-        ix1s,ix1e = seekAWS1LogTime(tx, tr[1])
+        ix0s,ix0e = seekLogTime(tx, tr[0])
+        ix1s,ix1e = seekLogTime(tx, tr[1])
         for ix in range(ix0e, ix1s):
-            iys,iye = seekAWS1LogTime(ty, tx[ix])
+            iys,iye = seekLogTime(ty, tx[ix])
             if iys==iye: # out of range for y data.
                 continue
             
@@ -180,11 +180,11 @@ def relateTimeRangeVecs3D(tx, ty, tz, vx, vy, vz, trng):
     ry = []
     rz = []
     for tr in trng:
-        ix0s,ix0e = seekAWS1LogTime(tx, tr[0])
-        ix1s,ix1e = seekAWS1LogTime(tx, tr[1])
+        ix0s,ix0e = seekLogTime(tx, tr[0])
+        ix1s,ix1e = seekLogTime(tx, tr[1])
         for ix in range(ix0e, ix1s):
-            iys,iye = seekAWS1LogTime(ty, tx[ix])
-            izs,ize = seekAWS1LogTime(tz, tx[ix])
+            iys,iye = seekLogTime(ty, tx[ix])
+            izs,ize = seekLogTime(tz, tx[ix])
             if iys!=iye and izs!=ize: # out of range for y data. 
                 t = tx[ix]
                 x = vx[ix]
@@ -253,7 +253,7 @@ def findInRangeTimeRanges(t, vec, vmax=sys.float_info.max, vmin=-sys.float_info.
 
     return tranges
 
-def seekAWS1LogTime(tseq,tseek):
+def seekLogTime(tseq,tseek):
     '''
     finds index of the time sequence tseq corresponding to the time tseek.
     the function returns two indices corresponding to before and after tseek.
@@ -289,7 +289,7 @@ def seekNextDataIndex(tnext, it, t):
     find next data index given a tnext. 
     if tnext is in the range headed by next time index, 
     it[1],it[1]+1 is returned, otherwise binary search is 
-    done by seekAWS1LogTime.
+    done by seekLogTime.
     '''    
     if it[1] == 0:
         if t[0] > tnext:
@@ -305,7 +305,7 @@ def seekNextDataIndex(tnext, it, t):
             return it[1],it[1]
         elif t[it[1]] <= tnext and t[it[1]+1] > tnext:
             return [it[1],it[1]+1]
-    return seekAWS1LogTime(t, tnext)
+    return seekLogTime(t, tnext)
 
 def printTimeHead(name, it, t):
     if it[1] == 0:
@@ -315,13 +315,13 @@ def printTimeHead(name, it, t):
     else:
         print("%s t[%d]=%f" % (name, it[0], t[it[0]]))
 
-def listAWS1DataSection(keys, data):
+def listDataSection(keys, data):
     lst = []
     for key in keys:
         lst.append(data[key])
     return lst
 
-def itpltAWS1DataVec(ldata, t, ts, it):
+def itpltDataVec(ldata, t, ts, it):
     '''
     gives linear interpoloation at time t for ldata. 
     (ldata is a list of time sequence along time given as ts)
@@ -337,13 +337,14 @@ def itpltAWS1DataVec(ldata, t, ts, it):
         idt += 1
     return vec
 
-def printAWS1DataVec(name, keys, vdata):
+def printDataVec(name, keys, vdata):
     strRec = name
     for idt in range(len(keys)):
         strRec += " %s:%f," % (keys[idt], vdata[idt])
     print (strRec)
 
-def loadAWS1Logs(path_log, list_file):
+def loadListLogs(path_log, list_file):
+    ''' load list in the file list_file '''
     file=open(list_file)
     logs=[]
     while True:
@@ -357,10 +358,10 @@ def loadAWS1Logs(path_log, list_file):
         else:
             print("No such log: %s" % path)
     return logs
-
     
-def listAWS1Logs(path_aws1_log):
-    command=['ls', path_aws1_log]
+def listLogs(path_log):
+    ''' list logs in the path_log '''
+    command=['ls', path_log]
     files=subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
     logs = re.findall(rb"[0-9]{17}", files)
     if len(logs) == 0:
@@ -368,23 +369,11 @@ def listAWS1Logs(path_aws1_log):
     strlogs=[ log.decode('utf-8') for log in logs ]
     return strlogs
 
-def convTtoStr(t):
-        command=['t2str', t]
-        str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-        return str_log_time.decode('utf-8')
-    
-
-def printAWS1Logs(logs):
-    ilog = 0
-    for log in logs:
-        str_log_time = convTtoStr(log)
-        print(("%d:"%ilog)+log + ":" + str_log_time)
-        ilog = ilog + 1
-   
-def selectAWS1Log(path_aws1_log, log_number=-1):
-    logs=listAWS1Logs(path_aws1_log)
+def selectLog(path_aws1_log, log_number=-1):
+    ''' select single log by specifying the index '''
+    logs=listLogs(path_aws1_log)
     if log_number == -1:
-        printAWS1Logs(logs)
+        printListLogs(logs)
         print("Select log number:")
         str_log_number=sys.stdin.readline()
         log_number=int(str_log_number)
@@ -413,8 +402,21 @@ def selectAWS1Log(path_aws1_log, log_number=-1):
 
     return log_time
 
+def convTtoStr(t):
+    ''' convert AWS time to string '''
+    command=['t2str', t]
+    str_log_time = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+    return str_log_time.decode('utf-8')
 
-def loadAWS1LogFiles(path_aws1_log, log_time=-1):
+def printListLogs(logs):
+    ''' print list of logs with its index and human-readable time '''
+    ilog = 0
+    for log in logs:
+        str_log_time = convTtoStr(log)
+        print(("%d:"%ilog)+log + ":" + str_log_time)
+        ilog = ilog + 1
+   x
+def loadLog(path_aws1_log, log_time=-1):
     path_log= "%s/%d"%(path_aws1_log,log_time)
     ##### Convert .log to .txt 
     command = ["ls", path_log]
@@ -464,7 +466,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
         print(chan_logs)
         chans_logs[chan] = chan_logs
 
-    tstrm,strm=ldv.loadAWS1VideoStream(path_log+"/mako0.avi",path_log+"/mako0.ts")
+    tstrm,strm=ldv.loadVideoStream(path_log+"/mako0.avi",path_log+"/mako0.ts")
 
     apinst = []
     uiinst = []
@@ -490,25 +492,25 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
 
     #ctrl ap
     for log in chans_logs[channels[1]]:
-        apinst.append(loadAWS1CtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
+        apinst.append(loadCtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
 
     apinst = concatSectionData(apinst)
 
     #ctrl ui
     for log in chans_logs[channels[3]]:
-        uiinst.append(loadAWS1CtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
+        uiinst.append(loadCtrlInst(path_log+"/"+log.decode('utf-8'), log_time))
 
     uiinst = concatSectionData(uiinst)
     
     #ctrl stat
     for log in chans_logs[channels[2]]:
-        ctrlst.append(loadAWS1CtrlStat(path_log+"/"+log.decode('utf-8'), log_time))
+        ctrlst.append(loadCtrlStat(path_log+"/"+log.decode('utf-8'), log_time))
 
     ctrlst = concatSectionData(ctrlst)
 
     #engstate
     for log in chans_logs[channels[4]]:
-        rapid,dynamic=loadAWS1Engstate(path_log+"/"+log.decode('utf-8'), log_time)
+        rapid,dynamic=loadEngstate(path_log+"/"+log.decode('utf-8'), log_time)
         engr.append(rapid)
         engd.append(dynamic)
 
@@ -517,7 +519,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
     
     #state
     for log in chans_logs[channels[5]]:
-        pos,vel,dp,att,s9dof=loadAWS1State(path_log+"/"+log.decode('utf-8'), log_time)
+        pos,vel,dp,att,s9dof=loadState(path_log+"/"+log.decode('utf-8'), log_time)
         stpos.append(pos)
         stvel.append(vel)
         stdp.append(dp)
@@ -533,7 +535,7 @@ def loadAWS1LogFiles(path_aws1_log, log_time=-1):
         'stpos':stpos, 'stvel':stvel, 'statt':statt, 'st9dof':st9dof, 'stdp':stdp, 
         'engr':engr, 'engd':engd, 'strm':{'t':tstrm, 'strm':strm}}, log_time
 
-def loadAWS1Engstate(fname, log_time):
+def loadEngstate(fname, log_time):
     print("Analyzing " + fname)
     file = open(fname)
     header=file.readline()
@@ -651,7 +653,7 @@ def loadAWS1Engstate(fname, log_time):
     file.close()
     return {'t':trapid, 'rpm':rpm, 'trim':trim} ,{'t':tdyn, 'valt':valt, 'temp':temp, 'frate':frate}
 
-def loadAWS1State(fname, log_time):
+def loadState(fname, log_time):
     print("Analyzing " + fname)
     file = open(fname)
     header = file.readline().strip().replace(" ", "").split(',')
@@ -880,11 +882,11 @@ def loadAWS1State(fname, log_time):
     lon = np.array(lon)
     alt = np.array(alt)
     roll = np.array(roll)
-    droll = diffAWS1DataVec(tatt, roll)
+    droll = diffDataVec(tatt, roll)
     pitch = np.array(pitch)
-    dpitch = diffAWS1DataVec(tatt, pitch)
+    dpitch = diffDataVec(tatt, pitch)
     yaw = np.array(yaw)
-    dyaw = diffAWS1DataYaw(tatt, yaw)
+    dyaw = diffDataYaw(tatt, yaw)
     mx = np.array(mx)
     my = np.array(my)
     mz = np.array(mz)
@@ -895,9 +897,9 @@ def loadAWS1State(fname, log_time):
     gy = np.array(gy)
     gz = np.array(gz)
     cog = np.array(cog)
-    dcog = diffAWS1DataCog(tvel, cog)
+    dcog = diffDataCog(tvel, cog)
     sog = np.array(sog)
-    dsog = diffAWS1DataVec(tvel, sog)
+    dsog = diffDataVec(tvel, sog)
     dsog = dsog * (1852.0/3600.0) # converting unit kts/sec into m/sec 
     depth = np.array(depth)
     file.close()
@@ -909,7 +911,7 @@ def loadAWS1State(fname, log_time):
         {'t':tatt, 'roll':roll, 'pitch':pitch, 'yaw':yaw, 'droll':droll, 'dpitch':dpitch, 'dyaw':dyaw},
         {'t':t9dofc, 'mx':mx, 'my':my, 'mz':mz, 'ax':ax, 'ay':ay, 'az':az, 'gx':gx, 'gy':gy, 'gz':gz})
         
-def loadAWS1CtrlStat(fname, log_time):
+def loadCtrlStat(fname, log_time):
     print("Analyzing " + fname)
     # t: rud, meng, seng
     file = open(fname)
@@ -977,7 +979,7 @@ def loadAWS1CtrlStat(fname, log_time):
 
     return {'t':t, 'meng':meng, 'seng':seng, 'rud':rud}
 
-def loadAWS1CtrlInst(fname, log_time):
+def loadCtrlInst(fname, log_time):
     # t: acs, rud, meng, seng
     print("Analyzing " + fname)
     file = open(fname)
@@ -1120,7 +1122,7 @@ def loadStatCsvs(path_result, logs, strpars):
     return valss
                             
 def getListAndTime(par, data):
-    l = listAWS1DataSection(par, data)
+    l = listDataSection(par, data)
     t = data['t']
     return l,t
 
@@ -1182,7 +1184,7 @@ def getErrorAtt(tstatt, lstatt):
     trng = findStableTimeRanges(tstatt,lstatt[0],smgn=1.0, emgn=1.0, th=0.0)
     return complementTimeRange(tstatt, trng)
 
-def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
+def plotDataSection(path, keys, str, ldata, ts, i0, i1):
     idt=0
     for key in keys:
         plt.plot(ts[i0:i1], ldata[idt][i0:i1])
@@ -1198,7 +1200,7 @@ def plotAWS1DataSection(path, keys, str, ldata, ts, i0, i1):
 
         np.savetxt(path+"/"+csvname, rel, delimiter=',')
         
-def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
+def plotDataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     figname=parx+pary+".png"
     if density:
         plt.hist2d(rx,ry, (50,50), cmap=plt.cm.jet)
@@ -1214,7 +1216,7 @@ def plotAWS1DataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
-def plotAWS1SogRpm(path, parx, pary, strx, stry, rx, ry):
+def plotSogRpm(path, parx, pary, strx, stry, rx, ry):
     res=opt.fitSogRpm(rx, ry, par0=[250.0, 0.0, 150.0, 1000.0])
     par = res.x
     plt.scatter(rx, ry, label="data", alpha=0.3)
@@ -1233,18 +1235,18 @@ def plotAWS1SogRpm(path, parx, pary, strx, stry, rx, ry):
     csvname="par"+parx+pary+".csv"
     np.savetxt(path+"/"+csvname, par, delimiter=',')    
     
-def plotAWS1SogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+def plotSogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     par = np.loadtxt(path+"/par"+parx+pary+".csv")
-    plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz)
+    plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz)
     
     rx=np.array([ry[i] - opt.funcSogRpm(par, rx[i]) for i in range(rx.shape[0])])
-    plotAWS1DataRelation(path, "rpm_rpm_e", "acl",
+    plotDataRelation(path, "rpm_rpm_e", "acl",
                              ["Difference from stable point", stry[1]],
                              strz, rx, rz)
 
 
     
-def plotAWS1DataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+def plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     figname=parx+pary+parz+".png"
     fig=plt.figure()
     ax=fig.gca(projection='3d')
