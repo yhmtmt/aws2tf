@@ -415,7 +415,7 @@ def printListLogs(logs):
         str_log_time = convTtoStr(log)
         print(("%d:"%ilog)+log + ":" + str_log_time)
         ilog = ilog + 1
-   x
+
 def loadLog(path_aws1_log, log_time=-1):
     path_log= "%s/%d"%(path_aws1_log,log_time)
     ##### Convert .log to .txt 
