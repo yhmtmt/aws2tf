@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-def loadAWS1VideoStream(fvideo, fts):
+def loadVideoStream(fvideo, fts):
     strm = cv2.VideoCapture(fvideo)
     nfrms = strm.get(cv2.CAP_PROP_FRAME_COUNT)
     fps = strm.get(cv2.CAP_PROP_FPS)

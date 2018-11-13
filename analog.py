@@ -41,22 +41,22 @@ if args.debug:
     pdb.set_trace()
 
 if args.all:
-    logs = ldl.listAWS1Logs(path_log)
+    logs = ldl.listLogs(path_log)
 else:
     if len(logsfile) != 0: # log list is given
-        logs = ldl.loadAWS1Logs(path_log, logsfile)
+        logs = ldl.loadListLogs(path_log, logsfile)
 
     if nlog != -1: # log number is given
-        log_time = ldl.selectAWS1Log(path_log, nlog)
+        log_time = ldl.selectLog(path_log, nlog)
         logs.append("%s" % log_time)
 
     if len(logs) == 0:
         print ("No log is specified please select.")
-        log_time = ldl.selectAWS1Log(path_log)
+        log_time = ldl.selectLog(path_log)
         logs.append("%s" % log_time)
 
 if args.list:
-    ldl.printAWS1Logs(logs)
+    ldl.printListLogs(logs)
     
 def procAWS1Log(log, log_time, force=False, new=True):
     if not os.path.exists(path_result):

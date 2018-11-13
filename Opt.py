@@ -59,18 +59,39 @@ def fitSogRpm(sog, rpm, par0=[250.0,0.0,250.0,0.0]):
 #      n > 0 (inverse thrust negative deceleration) ---<5>
 #      n < 0 (passive negative deceleration) ---<6>
 #
-# par: m, X_du, X_u, X_uu, K_l, K_q
-def resXAclPVelPRev(par, du, u, n): # <1>, <3> 
-    return -par[0] * du - par[1] * du - par[2] * u + par[3] * u * u - par[4] * u * n + par[5] * n * n
+# par: X_du, X_u, X_uu, K_l, K_q
+# X_du: the added mass
+# X_u: linear drag coefficient
+# X_uu: quadratic drag coefficient
+# K_l: linear thrust coefficient
+# K_q: quadratic thrust coefficient
+def resXAclPVelPRev(par, m, du, u, n): # <1>, <3> 
+    return -m * du - par[0] * du - par[1] * u + par[2] * u * u - par[3] * u * n + par[4] * n * n
 
-def resXAclPVelNRev(par, du, u, n): # <2>
-    return -par[0] * du - par[1] * du - par[2] * u + par[3] * u * u - par[4] * u * n - par[5] * n * n
+def fitXAclPVelPRev(m, du, u, n, par0=[100.0,100,0,100.0,100.0]):
+    return scipy.optimize.least_squares(resXAclPVelPRev,
+                                        par0, args=(m, du, u, n))
 
-def rexXAclNVelNRev(par, du, u, n): # <4>, <6>
-    return -par[0] * du - par[1] * du - par[2] * u - par[3] * u * u - par[4] * u * n - par[5] * n * n
+def resXAclPVelNRev(par, m, du, u, n): # <2>
+    return -m * du - par[0] * du - par[1] * u + par[2] * u * u - par[3] * u * n - par[4] * n * n
 
-def rexXAclNVelPRev(par, du, u, n): # <5>
-    return -par[0] * du - par[1] * du - par[2] * u - par[3] * u * u - par[4] * u * n + par[5] * n * n
+def fitXAclPVelNRev(m, du, u, n, par0=[100.0,100,0,100.0,100.0]):
+    return scipy.optimize.least_squares(resXAclPVelNRev,
+                                        par0, args=(m, du, u, n))
+
+def resXAclNVelNRev(par, m, du, u, n): # <4>, <6>
+    return -m * du - par[0] * du - par[1] * u - par[2] * u * u - par[3] * u * n - par[4] * n * n
+
+def fitXAclNVelNRev(m, du, u, n, par0=[100.0,100,0,100.0,100.0]):
+    return scipy.optimize.least_squares(resXAclNVelNRev,
+                                        par0, args=(m, du, u, n))
+
+def resXAclNVelPRev(par, m, du, u, n): # <5>
+    return -m * du - par[0] * du - par[1] * u - par[2] * u * u - par[3] * u * n + par[4] * n * n
+
+def fitXAclNVelPRev(m, du, u, n, par0=[100.0,100,0,100.0,100.0]):
+    return scipy.optimize.least_squares(resXAclNVelPRev,
+                                        par0, args=(m, du, u, n))
 
 
 
