@@ -135,8 +135,8 @@ par_stvel=['cog','sog', 'dcog', 'dsog']
 str_stvel=[["Course Over Ground","Deg"], ["Speed Over Ground", "kts"], ["Rate of Cource Change", "deg/s"], ["Acceleration", "m/ss"]]
 par_stdp=['depth']
 str_stdp=[["Depth","m"]]
-par_statt=['roll','pitch','yaw','droll', 'dpitch', 'dyaw']
-str_statt=[["Roll","Deg"],["Pitch","Deg"],["Yaw","Deg"],["Roll Rate", "Deg/s"],["Pitch Rate", "Deg/s"],["Yaw Rate", "Deg/s"]]
+par_statt=['roll','pitch','yaw','droll', 'dpitch', 'dyaw', 'byaw']
+str_statt=[["Roll","Deg"],["Pitch","Deg"],["Yaw","Deg"],["Roll Rate", "Deg/s"],["Pitch Rate", "Deg/s"],["Yaw Rate", "Deg/s"], ["Yaw Bias", "Deg"]]
 par_9dof=['mx','my','mz','ax','ay','az','gx','gy','gz']
 str_9dof=[["Magnetic Field in X", "None"],["Magnetic Field in Y", "None"],["Magnetic Field in Z", "None"],
             ["Acceleration in X", "None"],  ["Acceleration in Y", "None"],  ["Acceleration in Z", "None"],
@@ -145,6 +145,9 @@ par_cstat=['meng','seng','rud']
 str_cstat=[["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 par_cinst=['acs','meng','seng','rud']
 str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
+
+par_model_state=['u', 'v', 'r', 'n']
+str_model_state=[['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Propeller Rotation', 'rpm'], ['Rudder Angle', 'rad']]
 
 class AWS1Log:
     ''' AWS1 log '''
@@ -160,7 +163,8 @@ class AWS1Log:
         self.engr = []
         self.engd = []
         self.strm = {'t':None, 'strm':None}
-
+        self.model_state = {'t':None, 'model_state':None}
+        
     def load(self, path_aws1_log, log_time=-1):
         data,log_time=ldl.loadLog(path_aws1_log, log_time)
         self.apinst = data['apinst']
@@ -175,6 +179,11 @@ class AWS1Log:
         self.engd = data['engd']
         self.strm = data['strm']
 
+        #calculate model state
+        # velocity in body fixed coordinate (u, v, r)
+        # rudder angle in rad
+        # gear position
+        # propeller rev rpm x gratio x gear {-1,0,1}
         return log_time
 
     def getRelSogRpmAcl(self, ts=0.0, te=sys.float_info.max):
@@ -464,6 +473,7 @@ class AWS1Log:
         ldl.plotDataRelation(path, par_stvel[1], par_stvel[0], str_stvel[1], str_stvel[0], rx, ry)
         rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotSogRpm(path, par_stvel[1], par_engr[0], str_stvel[1], str_engr[0], rx, ry)
+        
         rx,ry,rz=ldl.getRelSogRpmAcl(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
         ldl.plotSogRpmAcl(path, par_stvel[1], par_engr[0], par_stvel[3], str_stvel[1], str_engr[0], str_stvel[3], rx, ry, rz)
         
