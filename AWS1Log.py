@@ -13,6 +13,7 @@ import Odet
 import cv2
 import ldAWS1Log as ldl
 import Opt as opt
+import pyawssim as sim
 
 #pdb.set_trace()
 # Ship coordinate
@@ -160,7 +161,41 @@ class AWS1Log:
         self.engr = []
         self.engd = []
         self.strm = {'t':None, 'strm':None}
+        self.mdl_eng_ctrl = sim.model_engine_ctrl();
+        self.mdl_params={}
+        self.mdl_param_exps={}
+        
+    def load_model_param(self, path_model_param):
+        with open(path_model_param) as file:
+            self.mdl_params={}
+            for line in file:
+                line = line.strip();
+                if len(line) == 0:
+                    continue;
 
+                parval=line
+                for i in range(len(line)):
+                    if(line[i] == '#'):                        
+                        parval,exp=line.split('#')
+                
+                if len(parval) == 0:
+                    continue;
+
+                par=''
+                val=''
+                for i in range(len(line)):
+                    if(line[i] == '='):
+                        par,val = parval.split('=')                        
+                
+                self.mdl_params[par]=float(val)
+            self.mdl_eng_ctrl.set_params(self.mdl_params)
+            
+    def save_model_param(self, path_model_param):
+        with open(path_model_param,mode='w') as file:
+            for par,val in self.mdl_params.items():
+                txt="%s=%f\n" % (par, val)
+                file.write(txt)
+    
     def load(self, path_aws1_log, log_time=-1):
         data,log_time=ldl.loadAWS1LogFiles(path_aws1_log, log_time)
         self.apinst = data['apinst']
@@ -174,7 +209,7 @@ class AWS1Log:
         self.engr = data['engr']
         self.engd = data['engd']
         self.strm = data['strm']
-
+        
         return log_time
 
     def getRelSogRpmAcl(self, ts=0.0, te=sys.float_info.max):
