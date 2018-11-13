@@ -887,6 +887,7 @@ def loadState(fname, log_time):
     dpitch = diffDataVec(tatt, pitch)
     yaw = np.array(yaw)
     dyaw = diffDataYaw(tatt, yaw)
+    byaw = np.zeros(yaw.shape[0])
     mx = np.array(mx)
     my = np.array(my)
     mz = np.array(mz)
@@ -908,7 +909,7 @@ def loadState(fname, log_time):
         {'t':tpos, 'lat':lat, 'lon':lon, 'alt':alt},
         {'t':tvel, 'cog':cog, 'sog':sog, 'dcog':dcog, 'dsog':dsog}, 
         {'t':tdp, 'depth':depth},
-        {'t':tatt, 'roll':roll, 'pitch':pitch, 'yaw':yaw, 'droll':droll, 'dpitch':dpitch, 'dyaw':dyaw},
+        {'t':tatt, 'roll':roll, 'pitch':pitch, 'yaw':yaw, 'droll':droll, 'dpitch':dpitch, 'dyaw':dyaw, 'byaw': byaw},
         {'t':t9dofc, 'mx':mx, 'my':my, 'mz':mz, 'ax':ax, 'ay':ay, 'az':az, 'gx':gx, 'gy':gy, 'gz':gz})
         
 def loadCtrlStat(fname, log_time):
@@ -1199,7 +1200,19 @@ def plotDataSection(path, keys, str, ldata, ts, i0, i1):
         csvname=key+".csv"
 
         np.savetxt(path+"/"+csvname, rel, delimiter=',')
-        
+
+def selectData3D(pred, x, y, z):
+    l=len(x)
+    rx=[]
+    ry=[]
+    rz=[]
+    for i in range(l):
+        if(pred(x[i],y[i],z[i])):
+            rx.append(x[i])
+            ry.append(y[i])
+            rz.append(z[i])
+    return np.array(rx),np.array(ry),np.array(rz)
+
 def plotDataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     figname=parx+pary+".png"
     if density:
@@ -1237,13 +1250,25 @@ def plotSogRpm(path, parx, pary, strx, stry, rx, ry):
     
 def plotSogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     par = np.loadtxt(path+"/par"+parx+pary+".csv")
-    plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz)
+    csog = opt.cSog(par)
+    def isDis(x, y, z):
+        return x <= csog
+    def isPln(x, y, z):
+        return x > csog
+    rxd,ryd,rzd = selectData(isDis, rx, ry, rz)
+    rxp,ryp,rzp = selectData(isPln, rx, ry, rz)
+    plotDataRelation3D(path, parx+"(displacement)", pary, parz, strx, stry, strz, rxd, ryd, rzd)    
+    plotDataRelation3D(path, parx+"(planing)", pary, parz, strx, stry, strz, rxp, ryp, rzp)
     
-    rx=np.array([ry[i] - opt.funcSogRpm(par, rx[i]) for i in range(rx.shape[0])])
+    rxd=np.array([ryd[i] - opt.funcSogRpm(par, rxd[i]) for i in range(rxd.shape[0])])
     plotDataRelation(path, "rpm_rpm_e", "acl",
-                             ["Difference from stable point", stry[1]],
-                             strz, rx, rz)
-
+                             ["Difference from stable point (in displacement)", stry[1]],
+                             strz, rxd, rzd)
+    rxp=np.array([ryp[i] - opt.funcSogRpm(par, rxp[i]) for i in range(rxp.shape[0])])
+    plotDataRelation(path, "rpm_rpm_e", "acl",
+                             ["Difference from stable point (in planing)", stry[1]],
+                             strz, rxp, rzp)
+    
 
     
 def plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):

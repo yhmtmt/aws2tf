@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--path_log", type=str, default="./", help="Path to the AWS1's log directory")
 parser.add_argument("--path_result", type=str, default="./", help="Path plotted images to be stored.")
+parser.add_argument("--path_model_param", type=str, default="./model_param", help="Path model parameter is stored.") 
 parser.add_argument("--ts", type=float, default=0.0, help="Start time in sec")
 parser.add_argument("--te", type=float, default=sys.float_info.max, help="End time in sec")
 parser.add_argument("--nlog", type=int, default=-1, help="Log selection by log number.")
@@ -31,6 +32,7 @@ logsfile=args.logs
 logs=[]
 path_log=args.path_log
 path_result=args.path_result
+path_model_param=args.path_model_param
 ts=args.ts
 te=args.te
 
@@ -77,8 +79,11 @@ if len(op) != 0:
     elif op == "proc":
         log = AWS1Log.AWS1Log()
         for log_time in logs:
+            log.load_model_param(path_model_param)
             log.load(path_log, int(log_time))
             procAWS1Log(log, int(log_time), args.force, args.new)
+            log.save_model_param(path_model_param)
+            
     elif op == "play":
         log = AWS1Log.AWS1Log()
         for log_time in logs:

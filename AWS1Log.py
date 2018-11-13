@@ -13,6 +13,7 @@ import Odet
 import cv2
 import ldAWS1Log as ldl
 import Opt as opt
+import pyawssim as sim
 
 #pdb.set_trace()
 # Ship coordinate
@@ -146,8 +147,8 @@ str_cstat=[["Main Engine Throttle Control","None"], ["Sub Engine Throttle Contro
 par_cinst=['acs','meng','seng','rud']
 str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 
-par_model_state=['u', 'v', 'r', 'n']
-str_model_state=[['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Propeller Rotation', 'rpm'], ['Rudder Angle', 'rad']]
+par_model_state=['ueng', 'urud', 'gamma', 'delta', 'sdelta', 'srudder', 'u', 'v', 'r', 'n', 'psi']
+str_model_state=[['Engine Control Instruction', 'None'], ['Rudder Control Instruction', 'None'], ['Gear Lever Position', 'None'], ['Throttle Lever Position', 'None'], ['Throttle Lever slack', 'None'], ['Rudder Slack', 'None'], ['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Propeller Rotation', 'rpm'], ['Rudder Angle', 'rad']]
 
 class AWS1Log:
     ''' AWS1 log '''
@@ -164,8 +165,43 @@ class AWS1Log:
         self.engd = []
         self.strm = {'t':None, 'strm':None}
         self.model_state = {'t':None, 'model_state':None}
+        self.mdl_eng_ctrl = sim.model_engine_ctrl();
+        self.mdl_rud_ctrl = sim.model_rudder_ctrl();
+        self.mdl_params={}
         
-    def load(self, path_aws1_log, log_time=-1):
+    def load_model_param(self, path_model_param):
+        with open(path_model_param) as file:
+            self.mdl_params={}
+            for line in file:
+                line = line.strip();
+                if len(line) == 0:
+                    continue;
+
+                parval=line
+                for i in range(len(line)):
+                    if(line[i] == '#'):                        
+                        parval,exp=line.split('#')
+                
+                if len(parval) == 0:
+                    continue;
+
+                par=''
+                val=''
+                for i in range(len(line)):
+                    if(line[i] == '='):
+                        par,val = parval.split('=')                        
+                
+                self.mdl_params[par]=float(val)
+            self.mdl_eng_ctrl.set_params(self.mdl_params)
+            self.mdl_rud_ctrl.set_params(self.mdl_params)
+            
+    def save_model_param(self, path_model_param):
+        with open(path_model_param,mode='w') as file:
+            for par,val in self.mdl_params.items():
+                txt="%s=%f\n" % (par, val)
+                file.write(txt)
+    
+    def load(self, path_aws1_log, log_time=-1, dt=0.1):
         data,log_time=ldl.loadLog(path_aws1_log, log_time)
         self.apinst = data['apinst']
         self.uiinst = data['uiinst']
@@ -184,6 +220,78 @@ class AWS1Log:
         # rudder angle in rad
         # gear position
         # propeller rev rpm x gratio x gear {-1,0,1}
+        lapinst,tapinst = ldl.getListAndTime(par_cinst, self.apinst)
+        luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)      
+        lengr,tengr = ldl.getListAndTime(par_engr, self.engr)        
+        lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+
+        
+        ts=0.0
+        te=max([tapinst[-1],tuiinst[-1], tengr[-1],tstatt[-1],tstvel[-1]])
+        tcur=ts
+        iapinst = ldl.seekLogTime(tapinst, ts)
+        iuiinst = ldl.seekLogTime(tuiinst, ts)
+        istvel = ldl.seekLogTime(tstvel, ts)
+        istatt = ldl.seekLogTime(tstatt, ts)
+        iengr = ldl.seekLogTime(tengr, ts)
+
+        gamma = 0.0
+        delta = 0.0
+        sdelta= 0.0
+        srudder = 0.0
+        psi=0.0
+        len_seq = int(te/dt)
+        vecs=np.zeros((len_seq, len(par_model_state)+1))
+        radian = math.pi / 180.0
+        mps = 1852.0 / 3600.0
+        for i in range(len_seq):
+            iapinst = ldl.seekNextDataIndex(tcur, iapinst, tapinst)
+            vapinst = ldl.itpltDataVec(lapinst, tcur, tapinst, iapinst)
+            iuiinst = ldl.seekNextDataIndex(tcur, iuiinst, tuiinst)
+            vuiinst = ldl.itpltDataVec(luiinst, tcur, tuiinst, iuiinst)
+            istvel = ldl.seekNextDataIndex(tcur, istvel, tstvel)
+            vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel)
+            istatt = ldl.seekNextDataIndex(tcur, istatt, tstatt)
+            vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt)
+            iengr = ldl.seekNextDataIndex(tcur, iengr, tengr)
+            vengr = ldl.itpltDataVec(lengr, tcur, tengr, iengr)
+
+            sog = vstvel[1] * mps
+            beta = (vstvel[0] - (vstatt[2] + vstatt[6])) * radian
+            u = math.cos(beta)
+            v = math.sin(beta)
+            r = vstatt[5]
+            n = (gamma >= 1.0 ? vengr[0] : (gamma <= -1.0 ? -vengr[0] : 0))            
+            ueng=(vuiinst[0]==0 ? vuiinst[1]:vapinst[1])
+            urud=(vuiinst[0]==0 ? vuiinst[2]:vapinst[2])
+            vecs[i][0] = tcur
+            vecs[i][1] = ueng;
+            vecs[i][2] = urud;
+            vecs[i][3] = gamma;
+            vecs[i][4] = delta;
+            vecs[i][5] = sdelta;
+            vecs[i][6] = srudder;
+            vecs[i][7] = u;
+            vecs[i][8] = v;
+            vecs[i][9] = r;
+            vecs[i][10] = n;
+            vecs[i][11] = psi;
+            
+            self.mdl_eng_ctrl.update(ueng, gamma, delta, sdelta, dt,
+                                     gamma_new, delta_new, sdelta_new)
+            self.mdl_rud_ctrl.update(urud, psi, srudder, dt,
+                                     psi_new, srudder_new)
+            gamma=gamma_new
+            delta=delta_new
+            sdelta=sdelta_new
+            srudder=srudder_new
+            
+            tcur+=dt
+
+        self.model_state['t'] = vecs[0]
+        self.model_state['model_state'] = vecs[1:]
+        
         return log_time
 
     def getRelSogRpmAcl(self, ts=0.0, te=sys.float_info.max):
@@ -192,6 +300,7 @@ class AWS1Log:
         lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
         lctrlst,tctrlst = ldl.getListAndTime(par_cstat, self.ctrlst)
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
+        
         return ldl.getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
     
     def play(self, ts, te, dt=0.1):

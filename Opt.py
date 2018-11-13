@@ -4,7 +4,6 @@ import scipy.optimize
 import sys
 import matplotlib.pyplot as plt
 
-
 ############## model for sog/rpm relationship ################
 # sog->rpm function
 def funcSogRpm(par, sog):
@@ -29,6 +28,9 @@ def funcSogRpm(par, sog):
     else:
         rpm = sys.float_info.max
     return rpm
+
+def cSog(par):
+    return (par[3]-par[1])/(par[0]-par[2])
 
 # residual rpm - funcSogRpm(sog)
 def resSogRpm(par, sog, rpm):
