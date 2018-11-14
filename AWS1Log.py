@@ -262,9 +262,10 @@ class AWS1Log:
             u = math.cos(beta)
             v = math.sin(beta)
             r = vstatt[5]
-            n = (gamma >= 1.0 ? vengr[0] : (gamma <= -1.0 ? -vengr[0] : 0))            
-            ueng=(vuiinst[0]==0 ? vuiinst[1]:vapinst[1])
-            urud=(vuiinst[0]==0 ? vuiinst[2]:vapinst[2])
+            n = (vengr[0] if (gamma >= 1.0) else (-vengr[0] if (gamma <= -1.0) else 0))
+            ueng=vuiinst[1] if vuiinst[0]==0 else vapinst[1]
+            urud=vuiinst[2] if vuiinst[0]==0 else vapinst[2]
+            
             vecs[i][0] = tcur
             vecs[i][1] = ueng;
             vecs[i][2] = urud;
