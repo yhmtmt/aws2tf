@@ -329,6 +329,15 @@ def itpltDataVec(ldata, t, ts, it):
     vec = np.zeros(shape=len(ldata),dtype=float)
     idt = 0
     for data in ldata:
+        if it[1] < 0:
+            vec[idt] = np.nan
+            continue
+        
+        if it[1] == it[0]:
+            vec[idt] = ldata[idt][it[0]]
+            idt += 1
+            continue         
+        
         d0 = ldata[idt][it[0]]
         d1 = ldata[idt][it[1]]
         t0 = ts[it[0]]
@@ -802,7 +811,7 @@ def loadState(fname, log_time):
             break
 
         t = int(line[0])
-        if tend >= t:
+        if tend > t:
             break
         tend = t
 
@@ -1255,17 +1264,17 @@ def plotSogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
         return x <= csog
     def isPln(x, y, z):
         return x > csog
-    rxd,ryd,rzd = selectData(isDis, rx, ry, rz)
-    rxp,ryp,rzp = selectData(isPln, rx, ry, rz)
-    plotDataRelation3D(path, parx+"(displacement)", pary, parz, strx, stry, strz, rxd, ryd, rzd)    
-    plotDataRelation3D(path, parx+"(planing)", pary, parz, strx, stry, strz, rxp, ryp, rzp)
+    rxd,ryd,rzd = selectData3D(isDis, rx, ry, rz)
+    rxp,ryp,rzp = selectData3D(isPln, rx, ry, rz)
+    plotDataRelation3D(path, parx+"-displacement", pary, parz, strx, stry, strz, rxd, ryd, rzd)    
+    plotDataRelation3D(path, parx+"-planing", pary, parz, strx, stry, strz, rxp, ryp, rzp)
     
     rxd=np.array([ryd[i] - opt.funcSogRpm(par, rxd[i]) for i in range(rxd.shape[0])])
-    plotDataRelation(path, "rpm_rpm_e", "acl",
+    plotDataRelation(path, "rpm_rpm_e-displacement", "acl",
                              ["Difference from stable point (in displacement)", stry[1]],
                              strz, rxd, rzd)
     rxp=np.array([ryp[i] - opt.funcSogRpm(par, rxp[i]) for i in range(rxp.shape[0])])
-    plotDataRelation(path, "rpm_rpm_e", "acl",
+    plotDataRelation(path, "rpm_rpm_e-planing", "acl",
                              ["Difference from stable point (in planing)", stry[1]],
                              strz, rxp, rzp)
     

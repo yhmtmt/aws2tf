@@ -165,8 +165,8 @@ class AWS1Log:
         self.engd = []
         self.strm = {'t':None, 'strm':None}
         self.model_state = {'t':None, 'model_state':None}
-        self.mdl_eng_ctrl = sim.model_engine_ctrl();
-        self.mdl_rud_ctrl = sim.model_rudder_ctrl();
+        self.mdl_eng_ctrl = sim.c_model_engine_ctrl();
+        self.mdl_rud_ctrl = sim.c_model_rudder_ctrl();
         self.mdl_params={}
         
     def load_model_param(self, path_model_param):
@@ -228,7 +228,12 @@ class AWS1Log:
 
         
         ts=0.0
-        te=max([tapinst[-1],tuiinst[-1], tengr[-1],tstatt[-1],tstvel[-1]])
+        def getTimeEnd(t):
+            if len(t) == 0:
+                return 0
+            return t[-1]
+        
+        te=max([getTimeEnd(tapinst),getTimeEnd(tuiinst),getTimeEnd(tengr),getTimeEnd(tstatt),getTimeEnd(tstvel)])
         tcur=ts
         iapinst = ldl.seekLogTime(tapinst, ts)
         iuiinst = ldl.seekLogTime(tuiinst, ts)
@@ -278,11 +283,8 @@ class AWS1Log:
             vecs[i][9] = r;
             vecs[i][10] = n;
             vecs[i][11] = psi;
-            
-            self.mdl_eng_ctrl.update(ueng, gamma, delta, sdelta, dt,
-                                     gamma_new, delta_new, sdelta_new)
-            self.mdl_rud_ctrl.update(urud, psi, srudder, dt,
-                                     psi_new, srudder_new)
+            gamma_new, delta_new, sdelta_new = self.mdl_eng_ctrl.update(int(ueng), gamma, delta, sdelta, dt)
+            psi_new, srudder_new = self.mdl_rud_ctrl.update(int(urud), psi, srudder, dt)
             gamma=gamma_new
             delta=delta_new
             sdelta=sdelta_new
