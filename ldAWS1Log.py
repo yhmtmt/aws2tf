@@ -1194,19 +1194,19 @@ def getErrorAtt(tstatt, lstatt):
     trng = findStableTimeRanges(tstatt,lstatt[0],smgn=1.0, emgn=1.0, th=0.0)
     return complementTimeRange(tstatt, trng)
 
-def plotDataSection(path, keys, str, ldata, ts, i0, i1):
+def plotDataSection(path, name, keys, str, ldata, ts, i0, i1):
     idt=0
     for key in keys:
         plt.plot(ts[i0:i1], ldata[idt][i0:i1])
         rel=np.c_[ts[i0:i1], ldata[idt][i0:i1]]
         ystr = str[idt][0] + " [" + str[idt][1] + "]"
         idt+=1
-        figname=key+".png"
+        figname=name+key+".png"
         plt.xlabel("Time [sec]")
         plt.ylabel(ystr)
         plt.savefig(path+"/"+figname)
         plt.clf()
-        csvname=key+".csv"
+        csvname=name+key+".csv"
 
         np.savetxt(path+"/"+csvname, rel, delimiter=',')
 

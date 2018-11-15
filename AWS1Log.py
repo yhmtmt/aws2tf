@@ -551,27 +551,27 @@ class AWS1Log:
             statcsv.write(str)
 
         # plot data
-        ldl.plotDataSection(path, par_cinst, str_cinst,
+        ldl.plotDataSection(path, "apinst", par_cinst, str_cinst,
                             lapinst, tapinst, iapinst[0], iapinstf[1])
-        ldl.plotDataSection(path, par_cinst, str_cinst,
+        ldl.plotDataSection(path, "uiinst", par_cinst, str_cinst,
                             luiinst, tuiinst, iuiinst[0], iuiinstf[1])
-        ldl.plotDataSection(path, par_cstat, str_cstat,
+        ldl.plotDataSection(path, "ctrlst", par_cstat, str_cstat,
                             lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
-        ldl.plotDataSection(path, par_stpos, str_stpos,
+        ldl.plotDataSection(path, "stpos", par_stpos, str_stpos,
                             lstpos, tstpos, istpos[0], istposf[1])
-        ldl.plotDataSection(path, par_stvel, str_stvel,
+        ldl.plotDataSection(path, "stvel", par_stvel, str_stvel,
                             lstvel, tstvel, istvel[0], istvelf[1])
-        ldl.plotDataSection(path, par_statt, str_statt,
+        ldl.plotDataSection(path, "statt", par_statt, str_statt,
                             lstatt, tstatt, istatt[0], istattf[1])
-        ldl.plotDataSection(path, par_9dof, str_9dof,
+        ldl.plotDataSection(path, "st9doff", par_9dof, str_9dof,
                             lst9dof, tst9dof, i9dof[0], i9doff[1])
-        ldl.plotDataSection(path, par_stdp, str_stdp,
+        ldl.plotDataSection(path, "stdp", par_stdp, str_stdp,
                             lstdp, tstdp, istdp[0], istdpf[1])
-        ldl.plotDataSection(path, par_engr, str_engr,
+        ldl.plotDataSection(path, "engr", par_engr, str_engr,
                             lengr, tengr, iengr[0], iengrf[1])
-        ldl.plotDataSection(path, par_engd, str_engd,
+        ldl.plotDataSection(path, "engd", par_engd, str_engd,
                             lengd, tengd, iengd[0], iengdf[1])
-        ldl.plotDataSection(path, par_model_state, str_model_state,
+        ldl.plotDataSection(path, "model_state", par_model_state, str_model_state,
                             lmdl, tmdl, imdl[0], imdlf[1])
 
         minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
