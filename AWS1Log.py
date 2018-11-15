@@ -164,7 +164,7 @@ class AWS1Log:
         self.engr = []
         self.engd = []
         self.strm = {'t':None, 'strm':None}
-        self.model_state = {'t':None, 'model_state':None}
+        self.model_state={}
         self.mdl_eng_ctrl = sim.c_model_engine_ctrl();
         self.mdl_rud_ctrl = sim.c_model_rudder_ctrl();
         self.mdl_params={}
@@ -224,9 +224,7 @@ class AWS1Log:
         luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)      
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)        
         lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
-        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
-
-        
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)        
         ts=0.0
         def getTimeEnd(t):
             if len(t) == 0:
@@ -292,9 +290,11 @@ class AWS1Log:
             
             tcur+=dt
 
+        vecs=np.transpose(vecs)
         self.model_state['t'] = vecs[0]
-        self.model_state['model_state'] = vecs[1:]
-        
+        for i in range(len(par_model_state)):
+            self.model_state[par_model_state[i]] = vecs[i+1]
+            
         return log_time
 
     def getRelSogRpmAcl(self, ts=0.0, te=sys.float_info.max):
@@ -466,6 +466,7 @@ class AWS1Log:
         lstdp,tstdp = ldl.getListAndTime(par_stdp, self.stdp)
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
         lengd,tengd = ldl.getListAndTime(par_engd, self.engd)
+        lmdl,tmdl = ldl.getListAndTime(par_model_state, self.model_state)       
         
         iapinst = ldl.seekLogTime(tapinst, ts)
         iapinstf = ldl.seekLogTime(tapinst, te)
@@ -489,11 +490,14 @@ class AWS1Log:
         iengdf = ldl.seekLogTime(tengd, te) 
         tstrm = self.strm['t']
         istrm = ldl.seekLogTime(tstrm, ts)
-        istrmf = ldl.seekLogTime(tstrm, te) 
+        istrmf = ldl.seekLogTime(tstrm, te)        
         strm = self.strm['strm']   
         ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
         ret,frm = strm.read()
         ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
+        imdl = ldl.seekLogTime(tmdl, ts)
+        imdlf = ldl.seekLogTime(tmdl, te)
+        
         while ifrm != istrm[1]:
             ret,frm = strm.read()
             ifrm += 1
@@ -537,6 +541,9 @@ class AWS1Log:
             for key in par_engd:
                 ldl.saveStat(statcsv, key, self.engd[key])
 
+            for key in par_model_state:
+                ldl.saveStat(statcsv, key, self.model_state[key])
+                
             ftotal = ldl.integrateData(tengd, self.engd['frate'])
             ftotal /= 3600.0
             str="ftotal,%f,%f,%f,%f\n" % (ftotal, ftotal, ftotal, ftotal)
@@ -544,25 +551,27 @@ class AWS1Log:
 
         # plot data
         ldl.plotDataSection(path, par_cinst, str_cinst,
-                                lapinst, tapinst, iapinst[0], iapinstf[1])
+                            lapinst, tapinst, iapinst[0], iapinstf[1])
         ldl.plotDataSection(path, par_cinst, str_cinst,
-                                luiinst, tuiinst, iuiinst[0], iuiinstf[1])
+                            luiinst, tuiinst, iuiinst[0], iuiinstf[1])
         ldl.plotDataSection(path, par_cstat, str_cstat,
-                                lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
+                            lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
         ldl.plotDataSection(path, par_stpos, str_stpos,
-                                lstpos, tstpos, istpos[0], istposf[1])
+                            lstpos, tstpos, istpos[0], istposf[1])
         ldl.plotDataSection(path, par_stvel, str_stvel,
-                                lstvel, tstvel, istvel[0], istvelf[1])
+                            lstvel, tstvel, istvel[0], istvelf[1])
         ldl.plotDataSection(path, par_statt, str_statt,
-                                lstatt, tstatt, istatt[0], istattf[1])
+                            lstatt, tstatt, istatt[0], istattf[1])
         ldl.plotDataSection(path, par_9dof, str_9dof,
-                                lst9dof, tst9dof, i9dof[0], i9doff[1])
+                            lst9dof, tst9dof, i9dof[0], i9doff[1])
         ldl.plotDataSection(path, par_stdp, str_stdp,
-                                lstdp, tstdp, istdp[0], istdpf[1])
+                            lstdp, tstdp, istdp[0], istdpf[1])
         ldl.plotDataSection(path, par_engr, str_engr,
-                                lengr, tengr, iengr[0], iengrf[1])
+                            lengr, tengr, iengr[0], iengrf[1])
         ldl.plotDataSection(path, par_engd, str_engd,
-                                lengd, tengd, iengd[0], iengdf[1])
+                            lengd, tengd, iengd[0], iengdf[1])
+        ldl.plotDataSection(path, par_model_state, str_model_state,
+                            lmdl, tmdl, imdl[0], imdlf[1])
 
         minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
         maxlat = max(lstpos[0][istpos[0]:istposf[1]]) 
