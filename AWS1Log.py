@@ -267,7 +267,7 @@ class AWS1Log:
             r = vstatt[5]
             n = (vengr[0] if (gamma >= 1.0) else (-vengr[0] if (gamma <= -1.0) else 0))
             ueng=vuiinst[1] if vuiinst[0]==0 else vapinst[1]
-            urud=vuiinst[2] if vuiinst[0]==0 else vapinst[2]
+            urud=vuiinst[3] if vuiinst[0]==0 else vapinst[3]
             
             vecs[i][0] = tcur
             vecs[i][1] = ueng;
@@ -286,6 +286,7 @@ class AWS1Log:
             gamma=gamma_new
             delta=delta_new
             sdelta=sdelta_new
+            psi=psi_new
             srudder=srudder_new
             
             tcur+=dt
