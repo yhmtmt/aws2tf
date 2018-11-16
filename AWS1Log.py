@@ -254,9 +254,9 @@ class AWS1Log:
             iuiinst = ldl.seekNextDataIndex(tcur, iuiinst, tuiinst)
             vuiinst = ldl.itpltDataVec(luiinst, tcur, tuiinst, iuiinst)
             istvel = ldl.seekNextDataIndex(tcur, istvel, tstvel)
-            vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel)
+            vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel, [True, False, False, False])
             istatt = ldl.seekNextDataIndex(tcur, istatt, tstatt)
-            vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt)
+            vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt, [False, False, True, False, False, False, False])
             iengr = ldl.seekNextDataIndex(tcur, iengr, tengr)
             vengr = ldl.itpltDataVec(lengr, tcur, tengr, iengr)
 
@@ -384,11 +384,11 @@ class AWS1Log:
             ldl.printDataVec("stpos", par_stpos, vstpos)
 
             istvel = ldl.seekNextDataIndex(tcur, istvel, tstvel)
-            vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel)
+            vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel, [True, False, False, False])
             ldl.printDataVec("stvel", par_stvel, vstvel)
 
             istatt = ldl.seekNextDataIndex(tcur, istatt, tstatt)
-            vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt)
+            vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt, [False, False, True, False, False, False, False])
             ldl.printDataVec("statt", par_statt, vstatt)
 
             i9dof = ldl.seekNextDataIndex(tcur, i9dof, tst9dof)

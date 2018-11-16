@@ -322,7 +322,7 @@ def listDataSection(keys, data):
         lst.append(data[key])
     return lst
 
-def itpltDataVec(ldata, t, ts, it):
+def itpltDataVec(ldata, t, ts, it, angl=[]):
     '''
     gives linear interpoloation at time t for ldata. 
     (ldata is a list of time sequence along time given as ts)
@@ -338,12 +338,25 @@ def itpltDataVec(ldata, t, ts, it):
             vec[idt] = ldata[idt][it[0]]
             idt += 1
             continue         
-        
+
         d0 = ldata[idt][it[0]]
         d1 = ldata[idt][it[1]]
+        is_angle = len(angl) > idt and angl[idt]
+        if is_angle:
+            diff = d0 - d1
+            if diff < -180.0:
+                d1 -= 360.0
+            elif diff > 180.0:
+                d0 -= 360.0        
+            
         t0 = ts[it[0]]
         t1 = ts[it[1]]
         vec[idt] = (d1 * (t - t0)  + d0 * (t1 - t)) / (t1 - t0)
+        if is_angle:
+            if vec[idt] < 0:
+                vec[idt] += 360.0
+            elif vec[idt] > 360.0:
+                vec[idt] -= 360.0                
         idt += 1
     return vec
 
