@@ -262,8 +262,8 @@ class AWS1Log:
 
             sog = vstvel[1] * mps
             beta = (vstvel[0] - (vstatt[2] + vstatt[6])) * radian
-            u = math.cos(beta)
-            v = math.sin(beta)
+            u = sog * math.cos(beta)
+            v = sog * math.sin(beta)
             r = vstatt[5]
             n = (vengr[0] if (gamma >= 1.0) else (-vengr[0] if (gamma <= -1.0) else 0))
             ueng=vuiinst[1] if vuiinst[0]==0 else vapinst[1]
@@ -306,6 +306,11 @@ class AWS1Log:
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)
         
         return ldl.getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
+
+    def getRelundu(self, ts=0.0, te=sys.float_info.max):
+        terr=ldl.getErrorAtt(tstatt, lstatt)        
+        lmdl,tmdl=ldl.getListAndTime(par_model_state, self.model_state)
+        return ldl.getRelundu(ts, te, tmdl, lmdl, terr)
     
     def play(self, ts, te, dt=0.1):
         # seek head for all data section
@@ -590,16 +595,21 @@ class AWS1Log:
         terr = ldl.getErrorAtt(tstatt, lstatt)
         
         rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
-        ldl.plotDataRelation(path, "meng", "rpm", str_cstat[0], str_engr[0], rx, ry)
+        ldl.plotDataRelation(path, "", "meng", "rpm", str_cstat[0], str_engr[0],
+                             rx, ry)
+       
         rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst, terr)
-        ldl.plotDataRelation(path, par_stvel[1], par_stvel[0], str_stvel[1], str_stvel[0], rx, ry)
-        rx,ry=ldl.getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
-        ldl.plotSogRpm(path, par_stvel[1], par_engr[0], str_stvel[1], str_engr[0], rx, ry)
+        ldl.plotDataRelation(path, "", par_stvel[1], par_stvel[0], str_stvel[1],
+                             str_stvel[0], rx, ry)
+               
+        rx,ry=ldl.getRelun(ts,te,tmdl,lmdl,terr)
+        ldl.plotun(path, par_model_state[6],par_model_state[9], str_model_state[6], str_model_state[0], rx, ry)
+               
+        rx,ry,rz=ldl.getRelundu(ts, te, tmdl, lmdl, terr)
+        ldl.plotundu(path, par_model_state[6], par_model_state[9], "du",
+                     str_model_state[6], str_model_state[9], ["Acceleration in X", "m/ss"], rx, ry, rz)
         
-        rx,ry,rz=ldl.getRelSogRpmAcl(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr)
-        ldl.plotSogRpmAcl(path, par_stvel[1], par_engr[0], par_stvel[3], str_stvel[1], str_engr[0], str_stvel[3], rx, ry, rz)
         
-
 def plotOpSogRpm(path_log, logs, path_result, force=False):
     if not os.path.exists(path_result):
         os.mkdir(path_result)
@@ -622,7 +632,7 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
     rx = np.array([])
     ry = np.array([])
     for log_time in logs:
-        data=np.loadtxt(path_result+"/"+log_time+"/sogrpm.csv", delimiter=",")     
+        data=np.loadtxt(path_result+"/"+log_time+"/un.csv", delimiter=",")     
         data=np.transpose(data)
         if data.shape[0] != 2:
             continue
@@ -630,24 +640,27 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
         rx = np.concatenate((rx,data[0]), axis=0)
         ry = np.concatenate((ry,data[1]), axis=0)
         
-    ldl.plotSogRpm(path_sogrpm, par_stvel[1], par_engr[0],
-                             str_stvel[1], str_engr[0], rx, ry)
+    ldl.plotun(path_sogrpm, par_model_state[6], par_model_state[9],
+                             str_model_state[6], str_model_state[9], rx, ry)
     rx = np.array([])
     ry = np.array([])
     rz = np.array([])
-    for log_time in logs:
-        data=np.loadtxt(path_result+"/"+log_time+"/sogrpmdsog.csv", delimiter=",")
-        data=np.transpose(data)
-        if data.shape[0] != 3:
-            continue;
-        rx = np.concatenate((rx,data[0]), axis=0)
-        ry = np.concatenate((ry,data[1]), axis=0)
-        rz = np.concatenate((rz,data[2]), axis=0)
-        
-    ldl.plotSogRpmAcl(path_sogrpm,
-                          par_stvel[1], par_engr[0], par_stvel[3],         
-                          str_stvel[1], str_engr[0], str_stvel[3],
-                          rx, ry, rz)
+    def loadundu(type):
+        for log_time in logs:
+            data=np.loadtxt(path_result+"/"+log_time+"/" + type + "undu.csv", delimiter=",")
+            data=np.transpose(data)
+            if data.shape[0] != 3:
+                continue;
+            rx = np.concatenate((rx,data[0]), axis=0)
+            ry = np.concatenate((ry,data[1]), axis=0)
+            rz = np.concatenate((rz,data[2]), axis=0)
+        return rx, ry, rz
+
+    rx,ry,rz = loadSogRpmDsog("all-")
+    ldl.plotundu(path_sogrpm,
+                 par_model_state[6], par_model_state[9], "du",
+                 str_model_state[6], str_model_state[9], ["Acceleration in x", "m/ss"],
+                 rx, ry, rz)
 
 def printStat(path_log, logs, path_result, strpars):
     log = AWS1Log()

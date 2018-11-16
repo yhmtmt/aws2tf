@@ -4,6 +4,7 @@ import re
 import subprocess
 import random
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import ldAWS1Video as ldv
@@ -1146,6 +1147,7 @@ def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
     return rx,ry
 
+
 def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 152 < meng < 255
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
@@ -1160,6 +1162,21 @@ def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]
     rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)
     return rx,ry
 
+def getRelun(ts,te, tmdl, lmdl, terr=[[]]):
+    # sog/rpm, -3deg < r < 3deg, 100 < urud < 154, 152 < meng < 255
+    # stable yaw and speed, 
+    rad=math.pi / 180.0
+    tr = findInRangeTimeRanges(tmdl, lmdl[8], 3*rad,-3*rad)
+    trud = findInRangeTimeRanges(tmdl, lmdl[1], 154, 100) 
+    tu = findStableTimeRanges(tmdl, lmdl[6], smgn=10.0, emgn=10.0, th=0.5)
+    
+    trng = intersectTimeRanges(tr, trud)
+    trng = intersectTimeRanges(trng, tu)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
+    rx,ry = relateTimeRangeVecs(tmdl, tmdl, lmdl[6], lmdl[9], trng)
+    return rx,ry
+
 def getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -1172,6 +1189,22 @@ def getRelSogRpmAcl(ts, te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr
 #    rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)    
 #    rx,rz = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[3], trng)
     return rx, ry, rz #sog, rpm, acl
+
+def getRelundu(ts, te, tmdl, lmdl, terr=[[]]):
+    du=diffDataVec(tmdl, lmdl[6])
+    rad=math.pi / 180.0
+    tr = findInRangeTimeRanges(tmdl, lmdl[8], 3*rad,-3*rad)
+    trud = findInRangeTimeRanges(tmdl, lmdl[1], 154, 100) 
+    
+    trng = intersectTimeRanges(tr, trud)
+    trng = intersectTimeRanges(trng, [[ts,te]])
+    trng = intersectTimeRanges(trng, terr)
+    rx,ry,rz= relateTimeRangeVecs3D(tmdl, tmdl, tmdl, lmdl[6], lmdl[9],
+                                    du, trng)
+#    rx,ry = relateTimeRangeVecs(tstvel, tengr, lstvel[1], lengr[0], trng)    
+#    rx,rz = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[3], trng)
+    return rx, ry, rz #sog, rpm, acl
+
 
 def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst, terr=[[]]):
     # sog/cog -3 < dcog < 3, 100 < rud < 154, 102 < meng < 152
@@ -1222,8 +1255,8 @@ def selectData3D(pred, x, y, z):
             rz.append(z[i])
     return np.array(rx),np.array(ry),np.array(rz)
 
-def plotDataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
-    figname=parx+pary+".png"
+def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
+    figname=name+parx+pary+".png"
     if density:
         plt.hist2d(rx,ry, (50,50), cmap=plt.cm.jet)
         plt.colorbar()
@@ -1234,11 +1267,11 @@ def plotDataRelation(path, parx, pary, strx, stry, rx, ry, density=False):
     plt.savefig(path+"/"+figname)
     plt.clf()
     
-    csvname=parx+pary+".csv"
+    csvname=name+parx+pary+".csv"
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
-def plotSogRpm(path, parx, pary, strx, stry, rx, ry):
+def plotun(path, parx, pary, strx, stry, rx, ry):
     res=opt.fitSogRpm(rx, ry, par0=[250.0, 0.0, 150.0, 1000.0])
     par = res.x
     plt.scatter(rx, ry, label="data", alpha=0.3)
@@ -1257,31 +1290,32 @@ def plotSogRpm(path, parx, pary, strx, stry, rx, ry):
     csvname="par"+parx+pary+".csv"
     np.savetxt(path+"/"+csvname, par, delimiter=',')    
     
-def plotSogRpmAcl(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+def plotundu(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     par = np.loadtxt(path+"/par"+parx+pary+".csv")
     csog = opt.cSog(par)
     def isDis(x, y, z):
         return x <= csog
     def isPln(x, y, z):
         return x > csog
+    plotDataRelation3D(path, "all-", parx, pary, parz, strx, stry, strz, rx, ry, rz)
     rxd,ryd,rzd = selectData3D(isDis, rx, ry, rz)
     rxp,ryp,rzp = selectData3D(isPln, rx, ry, rz)
-    plotDataRelation3D(path, parx+"-displacement", pary, parz, strx, stry, strz, rxd, ryd, rzd)    
-    plotDataRelation3D(path, parx+"-planing", pary, parz, strx, stry, strz, rxp, ryp, rzp)
+    plotDataRelation3D(path, "displacement-", parx, pary, parz, strx, stry, strz, rxd, ryd, rzd)    
+    plotDataRelation3D(path, "planing-", parx, pary, parz, strx, stry, strz, rxp, ryp, rzp)
     
     rxd=np.array([ryd[i] - opt.funcSogRpm(par, rxd[i]) for i in range(rxd.shape[0])])
-    plotDataRelation(path, "rpm_rpm_e-displacement", "acl",
-                             ["Difference from stable point (in displacement)", stry[1]],
+    plotDataRelation(path, "displacement-", "n_n_e", "acl",
+                             ["Difference from stable point", stry[1]],
                              strz, rxd, rzd)
     rxp=np.array([ryp[i] - opt.funcSogRpm(par, rxp[i]) for i in range(rxp.shape[0])])
-    plotDataRelation(path, "rpm_rpm_e-planing", "acl",
-                             ["Difference from stable point (in planing)", stry[1]],
+    plotDataRelation(path, "planing-","n_n_e", "acl",
+                             ["Difference from stable point ", stry[1]],
                              strz, rxp, rzp)
     
 
     
-def plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
-    figname=parx+pary+parz+".png"
+def plotDataRelation3D(path, name, parx, pary, parz, strx, stry, strz, rx, ry, rz):
+    figname=name+parx+pary+parz+".png"
     fig=plt.figure()
     ax=fig.gca(projection='3d')
     
@@ -1292,7 +1326,7 @@ def plotDataRelation3D(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     plt.savefig(path+"/"+figname)
     plt.clf()
     plt.close(fig)
-    csvname=parx+pary+parz+".csv"
+    csvname=name+parx+pary+parz+".csv"
     rel=np.c_[rx,ry,rz]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
     
