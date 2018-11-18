@@ -21,7 +21,7 @@ def funcSogRpm(par, sog):
     '''
     p=(par[3]-par[1])/(par[0]-par[2])
     rpm=0
-    if sog >= 0 and sog <= p:
+    if sog <= p:
         rpm = par[0] * sog + par[1]
     elif sog > p:
         rpm = par[2] * sog + par[3]
@@ -95,26 +95,25 @@ def fitXAclNVelPRev(m, du, u, n, par0=[100.0,100,0,100.0,100.0]):
     return scipy.optimize.least_squares(resXAclNVelPRev,
                                         par0, args=(m, du, u, n))
 
-
-
 if __name__ == '__main__':
     import pdb
     pdb.set_trace()
 
     #load sog/rpm data
-    data=np.loadtxt("/home/ubuntu/matumoto/aws/plot/sogrpm/sogrpm.csv", delimiter=",")
+    data=np.loadtxt("/mnt/d/aws/proc/sogrpm/un.csv", delimiter=",")
     data=np.transpose(data)
-    res=fitSogRpm(data[0], data[1], par0=[250.0,0.0,150.0,1000.0])
+    res=fitSogRpm(data[0], data[1], par0=[500.0,0.0,300.0,1000.0])
     par=res.x
     print("a=%f b=%f c=%f d=%f res=%f" % (par[0], par[1], par[2], par[3], res.cost))
+
+    umax = np.max(data[0])
+    umin = np.min(data[0])
+    u=np.array([float(i) for i in range(int(umin-0.5),int(umax+0.5))])
+    n=np.array([funcSogRpm(par, float(i)) for i in range(int(umin-0.5),int(umax+0.5))])       
     
-    sog=np.array([float(i) for i in range(0,25)])
-    rpm=np.array([funcSogRpm(par, float(i)) for i in range(0,25)])       
-    
-    plt.figure(figsize=(8,5))
     plt.scatter(data[0], data[1], label="data", alpha=0.3)
-    plt.plot(sog, rpm, label="fit", linewidth=10, alpha=0.7)
-    plt.xlabel("SOG(kts)")
+    plt.plot(u, n, label="fit", color='r', linewidth=3)
+    plt.xlabel("u(m/s)")
     plt.ylabel("Rev(RPM)")
     plt.grid(True)
     plt.show()

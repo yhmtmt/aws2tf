@@ -645,7 +645,7 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
     rx = np.array([])
     ry = np.array([])
     rz = np.array([])
-    def loadundu(type):
+    def loadundu(type, rx, ry, rz):
         for log_time in logs:
             data=np.loadtxt(path_result+"/"+log_time+"/" + type + "undu.csv", delimiter=",")
             data=np.transpose(data)
@@ -656,7 +656,7 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
             rz = np.concatenate((rz,data[2]), axis=0)
         return rx, ry, rz
 
-    rx,ry,rz = loadSogRpmDsog("all-")
+    rx,ry,rz = loadundu("all-", rx, ry, rz)
     ldl.plotundu(path_sogrpm,
                  par_model_state[6], par_model_state[9], "du",
                  str_model_state[6], str_model_state[9], ["Acceleration in x", "m/ss"],

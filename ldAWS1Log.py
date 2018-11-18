@@ -1285,10 +1285,12 @@ def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
 def plotun(path, parx, pary, strx, stry, rx, ry):
-    res=opt.fitSogRpm(rx, ry, par0=[250.0, 0.0, 150.0, 1000.0])
+    res=opt.fitSogRpm(rx, ry, par0=[500.0, 0.0, 300.0, 1000.0])
     par = res.x
+    xmin=np.min(rx)
+    xmax=np.max(ry)
     plt.scatter(rx, ry, label="data", alpha=0.3)
-    x=np.array([float(i) for i in range(0,25)])
+    x=np.array([float(i) for i in range(int(xmin-0.5),int(xmax +0.5))])
     y=np.array([opt.funcSogRpm(par, float(i)) for i in range(0,25)])
     plt.plot(x, y, label="fit", color='r', linewidth=3)
     plt.xlabel(strx[0]+" ["+strx[1]+"]")
