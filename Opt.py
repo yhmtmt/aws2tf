@@ -5,42 +5,46 @@ import sys
 import matplotlib.pyplot as plt
 
 ############## model for sog/rpm relationship ################
-# sog->rpm function
-def funcSogRpm(par, sog):
+# u->n function
+def funcun(par, u):
     '''
     par:[a,b,c,d]
-    0<=sog<=p
-    rpm=a sog+b
+    u < 0
+    n = au
 
-    sog>p
-    rpm=c sog+d
+    0<=u<=p
+    n = bu
 
-    sog=p
+    u>p
+    n= cu+d
+
+    n=p
     ap+b=cp+d
-    p = (d-b)/(a-c)
+    p = d/(b-c)
+
     '''
-    p=(par[3]-par[1])/(par[0]-par[2])
-    rpm=0
-    if sog <= p:
-        rpm = par[0] * sog + par[1]
-    elif sog > p:
-        rpm = par[2] * sog + par[3]
+    p=cu(par)
+    n=0
+    if u < 0:
+        n = par[0] * u
+    elif u <= p:
+        n = par[1] * u
     else:
-        rpm = sys.float_info.max
-    return rpm
+        n = par[2] * u + par[3]
+    return n
 
-def cSog(par):
-    return (par[3]-par[1])/(par[0]-par[2])
+def cu(par):
+    return par[3]/(par[1]-par[2])
 
-# residual rpm - funcSogRpm(sog)
-def resSogRpm(par, sog, rpm):
-    rpm_p = np.array([funcSogRpm(par, sog[i]) for i in range(rpm.shape[0])])
-    res = rpm_p - rpm
+# residual n - funcun(u)
+def resun(par, u, n):
+    n_p = np.array([funcun(par, u[i]) for i in range(n.shape[0])])
+    res = n_p - n
     return res
 
-# fitter for funcSogRpm using least_squares
-def fitSogRpm(sog, rpm, par0=[250.0,0.0,250.0,0.0]):
-    return scipy.optimize.least_squares(resSogRpm, par0, args=(sog,rpm))
+# fitter for funcun using least_squares
+def fitun(u, n, par0=[250.0,0.0,250.0,0.0]):
+    return scipy.optimize.least_squares(resun, par0, args=(u,n))
 
 
 ######### calculation of linear acceleration parameter ############
@@ -100,18 +104,30 @@ if __name__ == '__main__':
     pdb.set_trace()
 
     #load sog/rpm data
-    data=np.loadtxt("/mnt/d/aws/proc/sogrpm/un.csv", delimiter=",")
+    data=np.loadtxt("/home/ubuntu/matumoto/aws/proc/sogrpm/un.csv", delimiter=",")
     data=np.transpose(data)
-    res=fitSogRpm(data[0], data[1], par0=[500.0,0.0,300.0,1000.0])
+    _rx=[]
+    _ry=[]
+
+    for i in range(len(data[1])):
+        if data[1][i] >= 0 and data[0][i] < 0:
+            continue
+        _rx.append(data[0][i])
+        _ry.append(data[1][i])
+            
+    rx = np.array(_rx)
+    ry = np.array(_ry)
+    
+    res=fitun(rx, ry, par0=[700,500.0,300.0,1000.0])
     par=res.x
     print("a=%f b=%f c=%f d=%f res=%f" % (par[0], par[1], par[2], par[3], res.cost))
 
     umax = np.max(data[0])
     umin = np.min(data[0])
     u=np.array([float(i) for i in range(int(umin-0.5),int(umax+0.5))])
-    n=np.array([funcSogRpm(par, float(i)) for i in range(int(umin-0.5),int(umax+0.5))])       
+    n=np.array([funcun(par, float(i)) for i in range(int(umin-0.5),int(umax+0.5))])       
     
-    plt.scatter(data[0], data[1], label="data", alpha=0.3)
+    plt.scatter(rx, ry, label="data", alpha=0.3)
     plt.plot(u, n, label="fit", color='r', linewidth=3)
     plt.xlabel("u(m/s)")
     plt.ylabel("Rev(RPM)")

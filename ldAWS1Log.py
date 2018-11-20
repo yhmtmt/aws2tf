@@ -1285,13 +1285,28 @@ def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
 def plotun(path, parx, pary, strx, stry, rx, ry):
-    res=opt.fitSogRpm(rx, ry, par0=[500.0, 0.0, 300.0, 1000.0])
+    # first remove ry=0 points
+    _rx=[]
+    _ry=[]
+
+    for i in range(len(ry)):
+        if ry[i] >= 0 and rx[i] < 0:
+            continue
+        _rx.append(rx[i])
+        _ry.append(ry[i])
+            
+    rx = np.array(_rx)
+    ry = np.array(_ry)
+    
+    res=opt.fitun(rx, ry, par0=[700.0, 500, 300.0, 1000.0])
     par = res.x
-    xmin=np.min(rx)
-    xmax=np.max(ry)
+    
+    xmin= 0 if len(rx)==0 else np.min(rx)
+    xmax= 0 if len(ry)==0 else np.max(rx)
+    
     plt.scatter(rx, ry, label="data", alpha=0.3)
     x=np.array([float(i) for i in range(int(xmin-0.5),int(xmax +0.5))])
-    y=np.array([opt.funcSogRpm(par, float(i)) for i in range(0,25)])
+    y=np.array([opt.funcun(par, float(i)) for i in range(int(xmin-0.5),int(xmax +0.5))])
     plt.plot(x, y, label="fit", color='r', linewidth=3)
     plt.xlabel(strx[0]+" ["+strx[1]+"]")
     plt.ylabel(stry[0]+" ["+stry[1]+"]")  
@@ -1307,22 +1322,32 @@ def plotun(path, parx, pary, strx, stry, rx, ry):
     
 def plotundu(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     par = np.loadtxt(path+"/par"+parx+pary+".csv")
-    csog = opt.cSog(par)
+    cu = opt.cu(par)
+    def isAst(x, y, z):
+        return x < 0    
     def isDis(x, y, z):
-        return x <= csog
+        return x <= cu
     def isPln(x, y, z):
-        return x > csog
+        return x > cu
+    
     plotDataRelation3D(path, "all-", parx, pary, parz, strx, stry, strz, rx, ry, rz)
+    rxa,rya,rza = selectData3D(isAst, rx, ry, rz)
     rxd,ryd,rzd = selectData3D(isDis, rx, ry, rz)
     rxp,ryp,rzp = selectData3D(isPln, rx, ry, rz)
+    plotDataRelation3D(path, "astern-", parx, pary, parz, strx, stry, strz, rxa, rya, rza)        
     plotDataRelation3D(path, "displacement-", parx, pary, parz, strx, stry, strz, rxd, ryd, rzd)    
     plotDataRelation3D(path, "planing-", parx, pary, parz, strx, stry, strz, rxp, ryp, rzp)
+
+    rxa=np.array([rya[i] - opt.funcun(par, rxa[i]) for i in range(rxa.shape[0])])
+    plotDataRelation(path, "astern-", "n_n_e", "acl",
+                             ["Difference from stable point", stry[1]],
+                             strz, rxa, rza)
     
-    rxd=np.array([ryd[i] - opt.funcSogRpm(par, rxd[i]) for i in range(rxd.shape[0])])
+    rxd=np.array([ryd[i] - opt.funcun(par, rxd[i]) for i in range(rxd.shape[0])])
     plotDataRelation(path, "displacement-", "n_n_e", "acl",
                              ["Difference from stable point", stry[1]],
                              strz, rxd, rzd)
-    rxp=np.array([ryp[i] - opt.funcSogRpm(par, rxp[i]) for i in range(rxp.shape[0])])
+    rxp=np.array([ryp[i] - opt.funcun(par, rxp[i]) for i in range(rxp.shape[0])])
     plotDataRelation(path, "planing-","n_n_e", "acl",
                              ["Difference from stable point ", stry[1]],
                              strz, rxp, rzp)

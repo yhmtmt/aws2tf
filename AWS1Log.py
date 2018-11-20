@@ -627,7 +627,7 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
     for log_time in logs:
         if not os.path.exists(path_result+"/"+log_time):          
             log.load(path_log, int(log_time))
-            log.plot(0, sys.float_info.max, path_result)
+            log.proc(0, sys.float_info.max, path_result)
     
     rx = np.array([])
     ry = np.array([])
@@ -667,7 +667,7 @@ def printStat(path_log, logs, path_result, strpars):
     for log_time in logs:
         if not os.path.exists(path_result+"/"+log_time):          
             log.load(path_log, int(log_time))
-            log.plot(0, sys.float_info.max, path_result)
+            log.proc(0, sys.float_info.max, path_result)
 
     valss=ldl.loadStatCsvs(path_result, logs, strpars)
     print(strpars)
