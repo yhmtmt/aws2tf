@@ -1298,8 +1298,8 @@ def getStableTurn(ts, te, tstvel, lstvel, tstatt, lstatt, tctrlst, lctrlst,
         engavg = np.average(lmstate[0][istart[1]:iend[0]])
         rudavg = np.average(lmstate[1][istart[1]:iend[0]])
         revavg = np.average(lmstate[9][istart[1]:iend[0]])
-        drift = np.average(np.arctan2(lmstate[6][istart[1]:iend[0]],
-                                      lmstate[7][istart[1]:iend[0]])) * (180.0 / math.pi)
+        drift = np.average(np.arctan2(lmstate[7][istart[1]:iend[0]],
+                                      lmstate[6][istart[1]:iend[0]])) * (180.0 / math.pi)
         # v / r = 2 pi / T ->r = v T / 2pi
         radius = 0.5 * sogavg * (1852 / 3600) * period / math.pi
         turns.append([tstvel[icircle_start],tstvel[icircle_end],
