@@ -27,7 +27,7 @@ def calcStat(vec):
     if len(vec) != 0:
         return np.average(vec), np.max(vec), np.min(vec), np.std(vec)
     else:
-        return np.nan,np.nan,np.nan,np.nan
+        return 0,0,0,0
 
 def printStat(vname, vec):
     vavg, vmax, vmin, vstd = calcStat(vec)
@@ -35,6 +35,10 @@ def printStat(vname, vec):
 
 def saveStat(file, vname, vec):
     vavg, vmax, vmin, vstd = calcStat(vec)
+    str="%s, %f, %f, %f, %f\n" % (vname, vmax, vmin, vavg, vstd)
+    file.write(str)
+
+def saveStatGiven(file, vname, vmax, vmin, vavg, vstd):
     str="%s, %f, %f, %f, %f\n" % (vname, vmax, vmin, vavg, vstd)
     file.write(str)
     
@@ -203,7 +207,7 @@ def relateTimeRangeVecs3D(tx, ty, tz, vx, vy, vz, trng):
                 
     return np.array(rx),np.array(ry),np.array(rz)
 
-def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
+def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0, len_min=0):
     '''
         find stable ranges in given time sequence. smgn and emgn are 
         the start and end margins eliminated from the result. th is the 
@@ -226,7 +230,7 @@ def findStableTimeRanges(t, vec, smgn=5.0, emgn=0.0, th=1.0):
                 te = t[ivec]
         else:
             if(ts >= 0):
-                if (te - ts > emgn + smgn):
+                if (te - ts > emgn + smgn + len_min):
                     tranges.append([ts+smgn, te-emgn])
             ts = te = -1
             vmax = vmin = vec[ivec]
@@ -1315,6 +1319,40 @@ def loadStableTurn(path):
     np.loadtxt(path+"/turns.csv", turns, delimiter=',')
     
 
+def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
+    # for sog > th_sog, stable yaw and cog
+    # calculate average and standard deviation
+    tsog = findInRangeTimeRanges(tstvel, lstvel[1], 5, 100)
+    tyaw = findStableTimeRanges(tstatt, lstatt[2], smgn=0, emgn=0, th=3, len_min=10)
+    tcog = findStableTimeRanges(tstvel, lstvel[0], smgn=0, emgn=0, th=3, len_min = 10)
+    trng = intersectTimeRanges(tsog, tyaw)
+    trng = intersectTimeRanges(trng, tcog)
+    betas=[]
+    for tr in trng:
+        ivel_start = seekLogTime(tstvel, tr[0])
+        ivel_end = seekLogTime(tstvel, tr[1])
+        iatt = seekLogTime(tstatt, tstvel[ivel_start])
+        for ivel in range(ivel_start, ivel_end):
+            iatt = seekNextDataIndex(tstvel[ivel], iatt, tstatt)
+            vatt = itplDataVec(lstatt, tstvel[ivel], tstatt, iatt)
+            beta = lstvel[0][ivel] - vatt[2]
+            if(beta > 180):
+                beta -= 360
+            elif (beta < -180):
+                beta += 360
+            betas.append(beta)
+
+    if(len(betas)==0):
+        return np.nan,np.nan,np.nan,np.nan
+    
+    betas = np.array(betas)
+    drift_avg = np.average(betas)    
+    drift_dev = np.std(betas)
+    drift_min = np.min(betas)
+    drift_max = np.max(betas)
+    
+    return drift_avg, drift_max, drift_min, drift_dev
+        
 def getErrorAtt(tstatt, lstatt):
     # No update found in attitude values
     trng = findStableTimeRanges(tstatt,lstatt[0],smgn=1.0, emgn=1.0, th=0.0)

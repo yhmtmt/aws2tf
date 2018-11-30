@@ -168,6 +168,10 @@ class AWS1Log:
         self.mdl_eng_ctrl = sim.c_model_engine_ctrl();
         self.mdl_rud_ctrl = sim.c_model_rudder_ctrl();
         self.mdl_params={}
+        self.yaw_bias=0
+        self.yaw_bias_max=0
+        self.yaw_bias_min=0
+        self.yaw_bias_dev=0
         
     def load_model_param(self, path_model_param):
         with open(path_model_param) as file:
@@ -214,7 +218,7 @@ class AWS1Log:
         self.engr = data['engr']
         self.engd = data['engd']
         self.strm = data['strm']
-
+        
         #calculate model state
         # velocity in body fixed coordinate (u, v, r)
         # rudder angle in rad
@@ -224,7 +228,10 @@ class AWS1Log:
         luiinst,tuiinst = ldl.getListAndTime(par_cinst, self.uiinst)      
         lengr,tengr = ldl.getListAndTime(par_engr, self.engr)        
         lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
-        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)        
+        lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
+        # calculate yaw bias
+        self.yaw_bias, self.yaw_bias_max, self.yaw_bias_min, self.yaw_bias_dev = estimateYawBias(ts, te, tstvel, lstatt, tstatt, lstatt)
+        
         ts=0.0
         def getTimeEnd(t):
             if len(t) == 0:
@@ -261,7 +268,13 @@ class AWS1Log:
             vengr = ldl.itpltDataVec(lengr, tcur, tengr, iengr)
 
             sog = vstvel[1] * mps
+            vstatt[6] = self.yaw_bias
             beta = (vstvel[0] - (vstatt[2] + vstatt[6])) * radian
+            if(beta > 180):
+                beta -= 360
+            elif (beta < -180):
+                beta += 360
+                
             u = sog * math.cos(beta)
             v = sog * math.sin(beta)
             r = vstatt[5]
@@ -552,9 +565,9 @@ class AWS1Log:
                 
             ftotal = ldl.integrateData(tengd, self.engd['frate'])
             ftotal /= 3600.0
-            str="ftotal,%f,%f,%f,%f\n" % (ftotal, ftotal, ftotal, ftotal)
-            statcsv.write(str)
-
+            ldl.saveStatGiven(statcsv, "ftotal", ftotal, ftotal, ftotal, ftotal)
+            ldl.saveStatGiven(statcsv, "yaw_bias", self.yaw_bias_max, self.yaw_bias_min, self.yaw_bias, self.yaw_bias_dev)
+            
         # plot data
         ldl.plotDataSection(path, "apinst", par_cinst, str_cinst,
                             lapinst, tapinst, iapinst[0], iapinstf[1])
