@@ -230,7 +230,7 @@ class AWS1Log:
         lstatt,tstatt = ldl.getListAndTime(par_statt, self.statt)
         lstvel,tstvel = ldl.getListAndTime(par_stvel, self.stvel)
         # calculate yaw bias
-        self.yaw_bias, self.yaw_bias_max, self.yaw_bias_min, self.yaw_bias_dev = estimateYawBias(ts, te, tstvel, lstatt, tstatt, lstatt)
+        self.yaw_bias, self.yaw_bias_max, self.yaw_bias_min, self.yaw_bias_dev = ldl.estimateYawBias(0, sys.float_info.max, tstvel, lstvel, tstatt, lstatt)
         
         ts=0.0
         def getTimeEnd(t):

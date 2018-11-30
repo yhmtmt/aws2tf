@@ -1322,7 +1322,7 @@ def loadStableTurn(path):
 def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
     # for sog > th_sog, stable yaw and cog
     # calculate average and standard deviation
-    tsog = findInRangeTimeRanges(tstvel, lstvel[1], 5, 100)
+    tsog = findInRangeTimeRanges(tstvel, lstvel[1], 100, 5)
     tyaw = findStableTimeRanges(tstatt, lstatt[2], smgn=0, emgn=0, th=3, len_min=10)
     tcog = findStableTimeRanges(tstvel, lstvel[0], smgn=0, emgn=0, th=3, len_min = 10)
     trng = intersectTimeRanges(tsog, tyaw)
@@ -1331,10 +1331,10 @@ def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
     for tr in trng:
         ivel_start = seekLogTime(tstvel, tr[0])
         ivel_end = seekLogTime(tstvel, tr[1])
-        iatt = seekLogTime(tstatt, tstvel[ivel_start])
-        for ivel in range(ivel_start, ivel_end):
+        iatt = seekLogTime(tstatt, tstvel[ivel_start[1]])
+        for ivel in range(ivel_start[1], ivel_end[0]):
             iatt = seekNextDataIndex(tstvel[ivel], iatt, tstatt)
-            vatt = itplDataVec(lstatt, tstvel[ivel], tstatt, iatt)
+            vatt = itpltDataVec(lstatt, tstvel[ivel], tstatt, iatt)
             beta = lstvel[0][ivel] - vatt[2]
             if(beta > 180):
                 beta -= 360
@@ -1343,7 +1343,7 @@ def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
             betas.append(beta)
 
     if(len(betas)==0):
-        return np.nan,np.nan,np.nan,np.nan
+        return 0,0,0,0
     
     betas = np.array(betas)
     drift_avg = np.average(betas)    
