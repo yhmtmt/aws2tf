@@ -609,6 +609,14 @@ class AWS1Log:
         ldl.plotundu(path, par_model_state[6], par_model_state[9], "du",
                      str_model_state[6], str_model_state[9], ["Acceleration in X", "m/ss"], rx, ry, rz)
         
+        # detect and save turns
+        turns= ldl.getStableTurn(ts,te,
+                                 tstvel, lstvel,
+                                 tstatt, lstatt,
+                                 tctrlst, lctrlst,
+                                 tmdl, lmdl, terr)
+        ldl.saveStableTurn(path, turns)
+        
         
 def plotOpSogRpm(path_log, logs, path_result, force=False):
     if not os.path.exists(path_result):

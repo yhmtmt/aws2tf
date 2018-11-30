@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import ldAWS1Video as ldv
 import Opt as opt
 
-channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
 chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
+channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
 
 
 def calcTimeStat(tvec):
@@ -1234,6 +1234,86 @@ def getRelFieldSogCog(ts,te, tstvel, lstvel, tctrlst, lctrlst, terr=[[]]):
     trng = intersectTimeRanges(trng, terr)
     rx,ry = relateTimeRangeVecs(tstvel, tstvel, lstvel[1], lstvel[0], trng)
     return rx,ry
+
+def getStableTurn(ts, te, tstvel, lstvel, tstatt, lstatt, tctrlst, lctrlst,
+                  tmstate, lmstate, terr=[[]]):
+    # at least 1 circle with constant sog, dcog, rud and meng, )
+    # ths = 0.5 kts/sec, thy = 2.0 deg/sec
+    tcmeng = findStableTimeRanges(tmstate, lmstate[0], smgn=0.0, emgn=0.0, th=1.0)
+    tcrud = findStableTimeRanges(tmstate, lmstate[1], smgn=0.0, emgn=0.0, th=1.0)
+    tsog = findStableTimeRanges(tstvel, lstvel[1], smgn=0.0, emgn=0.0, th=2.0)
+#    tdcog = findStableTimeRanges(tstvel, lstvel[2], smgn=0.0, emgn=0.0, th=1.0)
+    trng = intersectTimeRanges(tcmeng, tcrud)
+    trng = intersectTimeRanges(trng, tsog)
+#    trng = intersectTimeRanges(trng, tdcog)
+    
+    def normAngleDiff(angle):
+        if(angle > 180.0):
+            angle -= 360.0
+        elif(angle < -180.0):
+            angle += 360.0
+        return angle
+
+    turns=[]
+    for tr in trng:
+        istart = seekLogTime(tstvel, tr[0])
+        iend = seekLogTime(tstvel, tr[1])
+        # count rotation from istart[1] to iend[0]
+        cog_start = cog_prev = lstvel[0][istart[1]]
+    
+        cog_turn_half = cog_start + 180.0
+        if(cog_turn_half > 360.0):
+            cog_turn_half -= 360.0
+        cog_diff_half_prev = 180.0
+        cog_diff_start_prev = 0.0
+        
+        ncircles = 0
+        is_turned_half = False
+        icircle_start = istart[1]
+        icircle_end = iend[0]
+        for icog in range(istart[1],iend[0]):
+            cog_diff = normAngleDiff(lstvel[0][icog] - cog_prev)
+            cog_diff_start = normAngleDiff(lstvel[0][icog] - cog_start)
+            cog_diff_half = normAngleDiff(lstvel[0][icog] - cog_turn_half)
+            if is_turned_half:                
+                if (abs(cog_diff_start) < 90.0) and (cog_diff_start * cog_diff_start_prev < 0):
+                    is_turned_half = False
+                    icircle_end = icog
+                    ncircles += 1
+            else:
+                if (abs(cog_diff_half)<90.0) and (cog_diff_half * cog_diff_half_prev < 0):
+                    is_turned_half = True                
+            cog_diff_half_prev = cog_diff_half
+            cog_diff_start_prev = cog_diff_start
+            cog_prev = lstvel[0][icog]
+
+        if(ncircles == 0):
+            continue
+        
+        period = (tstvel[icircle_end] - tstvel[icircle_start]) / ncircles
+        dcogavg = np.average(lstvel[0][icircle_start:icircle_end])
+        sogavg = np.average(lstvel[1][icircle_start:icircle_end])
+        istart = seekLogTime(tmstate, tstvel[icircle_start])
+        iend = seekLogTime(tmstate, tstvel[icircle_end])
+        engavg = np.average(lmstate[0][istart[1]:iend[0]])
+        rudavg = np.average(lmstate[1][istart[1]:iend[0]])
+        revavg = np.average(lmstate[9][istart[1]:iend[0]])
+        drift = np.average(np.arctan2(lmstate[6][istart[1]:iend[0]],
+                                      lmstate[7][istart[1]:iend[0]])) * (180.0 / math.pi)
+        # v / r = 2 pi / T ->r = v T / 2pi
+        radius = 0.5 * sogavg * (1852 / 3600) * period / math.pi
+        turns.append([tstvel[icircle_start],tstvel[icircle_end],
+                      period, radius, drift, revavg, sogavg, rudavg, engavg])
+    # returns [tstart,tend,period,radius,drift,rev,sog,rud,meng]
+
+    return np.array(turns)
+
+def saveStableTurn(path, turns):
+    np.savetxt(path+"/turns.csv", turns, delimiter=',')
+
+def loadStableTurn(path):
+    np.loadtxt(path+"/turns.csv", turns, delimiter=',')
+    
 
 def getErrorAtt(tstatt, lstatt):
     # No update found in attitude values
