@@ -1319,7 +1319,7 @@ def loadStableTurn(path):
     np.loadtxt(path+"/turns.csv", turns, delimiter=',')
     
 
-def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
+def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt, terr=[[]]):
     # for sog > th_sog, stable yaw and cog
     # calculate average and standard deviation
     tsog = findInRangeTimeRanges(tstvel, lstvel[1], 100, 5)
@@ -1327,6 +1327,7 @@ def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt):
     tcog = findStableTimeRanges(tstvel, lstvel[0], smgn=0, emgn=0, th=3, len_min = 10)
     trng = intersectTimeRanges(tsog, tyaw)
     trng = intersectTimeRanges(trng, tcog)
+    trng = intersectTimeRanges(trng, terr)
     betas=[]
     for tr in trng:
         ivel_start = seekLogTime(tstvel, tr[0])
