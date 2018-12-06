@@ -1244,10 +1244,13 @@ def getStableTurn(ts, te, tstvel, lstvel, tstatt, lstatt, tctrlst, lctrlst,
     # at least 1 circle with constant sog, dcog, rud and meng, )
     # ths = 0.5 kts/sec, thy = 2.0 deg/sec
     tcmeng = findStableTimeRanges(tmstate, lmstate[0], smgn=0.0, emgn=0.0, th=1.0)
+    trun = complementTimeRange(tmstate,
+                               findInRangeTimeRanges(tmstate, lmstate[2], 0.99, -0.99));
     tcrud = findStableTimeRanges(tmstate, lmstate[1], smgn=0.0, emgn=0.0, th=1.0)
     tsog = findStableTimeRanges(tstvel, lstvel[1], smgn=0.0, emgn=0.0, th=2.0)
 #    tdcog = findStableTimeRanges(tstvel, lstvel[2], smgn=0.0, emgn=0.0, th=1.0)
     trng = intersectTimeRanges(tcmeng, tcrud)
+    trng = intersectTimeRanges(trng, trun)
     trng = intersectTimeRanges(trng, tsog)
 #    trng = intersectTimeRanges(trng, tdcog)
     
@@ -1313,7 +1316,8 @@ def getStableTurn(ts, te, tstvel, lstvel, tstatt, lstatt, tctrlst, lctrlst,
     return np.array(turns)
 
 def saveStableTurn(path, turns):
-    np.savetxt(path+"/turns.csv", turns, delimiter=',')
+    str="tstart,tend,period,radius,drift,rev,sog,rud,meng"
+    np.savetxt(path+"/turns.csv", turns, delimiter=',', header=str, fmt="%.2f")
 
 def loadStableTurn(path):
     np.loadtxt(path+"/turns.csv", turns, delimiter=',')
