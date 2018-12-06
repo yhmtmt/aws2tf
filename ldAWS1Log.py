@@ -252,10 +252,14 @@ def findInRangeTimeRanges(t, vec, vmax=sys.float_info.max, vmin=-sys.float_info.
             else:
                 te = t[ivec]
         else:
-            if(ts > 0):
+            if(ts >= 0):
                 tranges.append([ts, te])
             ts = te = -1
 
+    if(ts >= 0):
+        te = t[-1]
+        tranges.append([ts, te])
+        ts = te = -1        
     return tranges
 
 def seekLogTime(tseq,tseek):
