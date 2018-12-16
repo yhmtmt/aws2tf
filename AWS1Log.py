@@ -619,7 +619,7 @@ class AWS1Log:
                              str_stvel[0], rx, ry)
                
         rx,ry=ldl.getRelun(ts,te,tmdl,lmdl,terr)
-        ldl.plotun(path, par_model_state[6],par_model_state[9], str_model_state[6], str_model_state[0], rx, ry)
+        ldl.plotun(path, str_model_state[6], str_model_state[0], rx, ry)
                
         rx,ry,rz=ldl.getRelundu(ts, te, tmdl, lmdl, terr)
         ldl.plotundu(path, par_model_state[6], par_model_state[9], "du",
@@ -633,15 +633,31 @@ class AWS1Log:
                                  tmdl, lmdl, terr)
         ldl.saveStableTurn(path, turns)
         
+def solve3DoFModel(path_log, logs, path_result, force=False):
+    # loadun parameter
+    # calculate mode threshold
+    # [plane, displacement forward, displacement backward]
+    path_sogrpm = path_result + "/sogrpm"
+    if not os.path.exists(path_sogrpm):
+        print("sogrpm result is not found. Now sogrpm is gonna run") 
+        procOpSogRpm(path_log, logs, path_result, force=False)
+
+    
+    # for each mode
+    #   establish stable straight equations
+    #   loadturns
+    #   establish stable turn equations
+    #   solve if rank satisfied the dof.
+    print("still in implementation")
         
-def plotOpSogRpm(path_log, logs, path_result, force=False):
+def procOpSogRpm(path_log, logs, path_result, force=False):
     if not os.path.exists(path_result):
         os.mkdir(path_result)
 
-    path_sogrpm = path_result + "/sogrpm"    
+    path_sogrpm = path_result + "/sogrpm"
     if not os.path.exists(path_sogrpm):
         os.mkdir(path_sogrpm)
-    elif not force:        
+    elif not force:
         print("%s exists. Overwrite? (y/n)" % path_sogrpm)
         yorn=sys.stdin.readline().strip()
         if yorn != "y":
@@ -651,12 +667,12 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
     for log_time in logs:
         if not os.path.exists(path_result+"/"+log_time):          
             log.load(path_log, int(log_time))
-            log.proc(0, sys.float_info.max, path_result)
+            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
     
     rx = np.array([])
     ry = np.array([])
     for log_time in logs:
-        data=np.loadtxt(path_result+"/"+log_time+"/un.csv", delimiter=",")     
+        data=np.loadtxt(path_result+"/"+log_time+"/un.csv", delimiter=",") 
         data=np.transpose(data)
         if data.shape[0] != 2:
             continue
@@ -664,8 +680,7 @@ def plotOpSogRpm(path_log, logs, path_result, force=False):
         rx = np.concatenate((rx,data[0]), axis=0)
         ry = np.concatenate((ry,data[1]), axis=0)
         
-    ldl.plotun(path_sogrpm, par_model_state[6], par_model_state[9],
-                             str_model_state[6], str_model_state[9], rx, ry)
+    ldl.plotun(path_sogrpm, str_model_state[6], str_model_state[9], rx, ry)
     rx = np.array([])
     ry = np.array([])
     rz = np.array([])

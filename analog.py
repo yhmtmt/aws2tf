@@ -75,7 +75,7 @@ def procAWS1Log(log, log_time, force=False, new=True):
     
 if len(op) != 0:    
     if op == "sogrpm":
-        AWS1Log.plotOpSogRpm(path_log, logs, path_result, args.force)
+        AWS1Log.procOpSogRpm(path_log, logs, path_result, args.force)
     elif op == "proc":
         log = AWS1Log.AWS1Log()
         for log_time in logs:
