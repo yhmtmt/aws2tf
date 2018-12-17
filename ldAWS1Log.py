@@ -1308,24 +1308,98 @@ def getStableTurn(ts, te, tstvel, lstvel, tstatt, lstatt, tctrlst, lctrlst,
         iend = seekLogTime(tmstate, tstvel[icircle_end])
         engavg = np.average(lmstate[0][istart[1]:iend[0]])
         rudavg = np.average(lmstate[1][istart[1]:iend[0]])
+        uavg = np.average(lmstate[6][istart[1]:iend[0]])
+        vavg = np.average(lmstate[7][istart[1]:iend[0]])
+        ravg = np.average(lmstate[8][istart[1]:iend[0]])
+        psiavg = np.average(lmstate[10][istart[1]:iend[0]])
         revavg = np.average(lmstate[9][istart[1]:iend[0]])
         drift = np.average(np.arctan2(lmstate[7][istart[1]:iend[0]],
                                       lmstate[6][istart[1]:iend[0]])) * (180.0 / math.pi)
+        
         # v / r = 2 pi / T ->r = v T / 2pi
         radius = 0.5 * sogavg * (1852 / 3600) * period / math.pi
         turns.append([tstvel[icircle_start],tstvel[icircle_end],
-                      period, radius, drift, revavg, sogavg, rudavg, engavg])
-    # returns [tstart,tend,period,radius,drift,rev,sog,rud,meng]
+                      period, radius, drift, uavg, vavg, ravg, psiavg, revavg,
+                      sogavg, rudavg, engavg])
+    # returns [tstart,tend,period,radius,drift,uavg,vavg,ravg,psiavg,rev,sog,rud,meng]
 
     return np.array(turns)
 
 def saveStableTurn(path, turns):
-    str="tstart,tend,period,radius,drift,rev,sog,rud,meng"
+    str="tstart,tend,period,radius,drift,u,v,r,psi,rev,sog,rud,meng"
     np.savetxt(path+"/turns.csv", turns, delimiter=',', header=str, fmt="%.2f")
 
 def loadStableTurn(path):
     np.loadtxt(path+"/turns.csv", turns, delimiter=',')
     
+def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
+    # build a set of stable turn equations
+    
+    uabsu = u * abs(u)
+    vabsv = v * abs(v)
+    rabsr = r * abs(r)
+    nabsn = n * abs(n)
+
+    vr = v * r
+    ur = u * r
+    uv = u * v
+    uu = u * u
+    mrr = m * r * r
+    mur = m * ur
+    mvr = m * vr
+
+    # (nrx, nry) radder direction vector
+    nrx = math.cos(psi)
+    nry = math.sin(psi)
+
+    # (nrxp, nryp) the vector  perpendicular to (nrx, nry)
+    nrxp = -nry
+    nryp = nrx
+
+    # (vrx, vry) velocity of rudder 
+    vrx = u - yr * r
+    vry = v + xr * r
+
+    # dot product  (vrx, vry)^t (nrx, nry)
+    vrnr = vrx * nrx + vry * nry
+
+    # dot product (vrx, vry)^t (nrxq, nryq)
+    vrnrq = vrx * nrxq + vry * nryq
+    
+    Xcl = 0.5 * vrnrq * (- v - xr * r)
+    Xcd = 0.5 * vrnrq * (u - yr * r)
+    Xkl = -vrnr * n * nrx
+    Xkq = -nabsn * nrx
+    Ycl = 0.5 * vrnrq * (u - yr * r)
+    Ycd = 0.5 * vrnrq * (v + xr * r)
+    Ykl = -vrnr * n * nry
+    Ykq = -nabsn * nrx
+    Ncl = 0.5 * vrnrq * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
+    Ncd = 0.5 * vrnrq * (-yr * yr * yr * r + xr +xr * xr * r)
+    Nkl = -vrnr * n * (-yr * nrx + xr * nry)
+    Nkq = -nabsn * (-yr * nrx +xr * nry)
+    
+    if vrnr < 0:
+        Xcl = -Xcl        
+        Ycl = -Ycl
+        Ncl = -Ncl
+
+    eq=[[-mrr, 0, 0, vr, r, -u, 0, 0, 0, 0, -uabsu, 0, 0, 0, 0,
+         Xcl, Xcd, Xkl, Xkq],
+        [0, -mrr, ur, 0, 0, 0, -u, -r, 0, 0, 0, -vabsv, -rabsr, 0, 0,
+         Ycl, Ycd, Ykl, Ykq],
+        [mur, mvr, uu, -uv, -ur, 0, 0, 0, -v, -r, 0, 0, 0, -vabsv, -rabsr,
+         Ncl, Ncd, Nkl, Nkq]]
+    res=[[mvr],[mur],[m *(-uv + uu)]]
+    return np.array(eq),np.array(res) 
+
+def getStableStraightEq(u, n):
+    uabsu = u * abs(u)
+    nabsn = n * absn
+    un = u * n
+    eq = np.array([0, 0, 0, 0, 0, -u, 0, 0, 0, 0,
+                   -uabsu, 0, 0, 0, 0, 0, 0, un, nabsn])
+    return eq,np.array([0])
 
 def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt, terr=[[]]):
     # for sog > th_sog, stable yaw and cog
@@ -1411,7 +1485,7 @@ def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
-def plotun(path, parx, pary, strx, stry, rx, ry):
+def plotun(path, strx, stry, rx, ry):
     # first remove ry=0 points
     _rx=[]
     _ry=[]
@@ -1437,18 +1511,33 @@ def plotun(path, parx, pary, strx, stry, rx, ry):
     plt.plot(x, y, label="fit", color='r', linewidth=3)
     plt.xlabel(strx[0]+" ["+strx[1]+"]")
     plt.ylabel(stry[0]+" ["+stry[1]+"]")  
-    figfile=parx+pary+".png"
+    figfile="un.png"
     plt.savefig(path+"/"+figfile)
     plt.clf()
     
-    csvname=parx+pary+".csv"    
-    rel=np.c_[rx,ry]
+    saveRelun(path, rx, ry)
+    saveParun(path, par)
+
+def saveRelun(path, u, n):
+    rel=np.c_[u,n]
+    csvname="un.csv"
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
-    csvname="par"+parx+pary+".csv"
-    np.savetxt(path+"/"+csvname, par, delimiter=',')    
+
+def loadRelun(path):
+    csvname="un.csv"
+    rel = np.loadtxt(path+"/"+csvname, delimiter=',')
+    return rel[:][0],rel[:][1]
     
+def saveParun(path, par):
+    csvname="parun.csv"
+    np.savetxt(path+"/"+csvname, par, delimiter=',')
+    
+def loadParun(path):
+    csvname="parun.csv"
+    return np.loadtxt(path+"/"+csvname, delimiter=',')
+        
 def plotundu(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
-    par = np.loadtxt(path+"/par"+parx+pary+".csv")
+    par = loadParun(path)
     cu = opt.cu(par)
     def isAst(x, y, z):
         return x < 0    
@@ -1477,9 +1566,7 @@ def plotundu(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     rxp=np.array([ryp[i] - opt.funcun(par, rxp[i]) for i in range(rxp.shape[0])])
     plotDataRelation(path, "planing-","n_n_e", "acl",
                              ["Difference from stable point ", stry[1]],
-                             strz, rxp, rzp)
-    
-
+                             strz, rxp, rzp)    
     
 def plotDataRelation3D(path, name, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     figname=name+parx+pary+parz+".png"
