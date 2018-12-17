@@ -353,11 +353,12 @@ class AWS1Log:
         iengd = ldl.seekLogTime(tengd, ts) 
         tstrm = self.strm['t']
         istrm = ldl.seekLogTime(tstrm, ts)
-        strm = self.strm['strm']   
-        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
+        strm = self.strm['strm']
+        ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))        
+        ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))        
         ret,frm = strm.read()
-        ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
-        while ifrm != istrm[1]:
+
+        while ifrm < istrm[1]:
             ret,frm = strm.read()
             ifrm += 1
         
@@ -427,7 +428,7 @@ class AWS1Log:
             ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
             bfrmNew=False
             if ifrm < istrm[1]:                
-                while ifrm != istrm[1]:
+                while ifrm < istrm[1]:
                     ret,frm = strm.read()
                     bfrmNew=True
                     ifrm += 1
@@ -514,15 +515,16 @@ class AWS1Log:
         istrm = ldl.seekLogTime(tstrm, ts)
         istrmf = ldl.seekLogTime(tstrm, te)        
         strm = self.strm['strm']   
+        ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
         ret = strm.set(cv2.CAP_PROP_POS_FRAMES, max(0,istrm[1] - 1))
         ret,frm = strm.read()
-        ifrm = strm.get(cv2.CAP_PROP_POS_FRAMES)
         imdl = ldl.seekLogTime(tmdl, ts)
         imdlf = ldl.seekLogTime(tmdl, te)
         
-        while ifrm != istrm[1]:
-            ret,frm = strm.read()
+        while ifrm < istrm[1]:
             ifrm += 1
+            ret,frm = strm.read()
+
 
         if not os.path.exists(path):
             os.mkdir(path)

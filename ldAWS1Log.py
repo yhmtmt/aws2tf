@@ -270,9 +270,9 @@ def seekLogTime(tseq,tseek):
     iend=tseq.shape[0]-1
     if iend < 0:
         return iend, iend
-    if(tseek > tseq[-1]):
+    if(tseek >= tseq[-1]):
         return iend, iend
-    elif(tseek < tseq[0]):
+    elif(tseek <= tseq[0]):
         return 0, 0
 
     i=tseq.shape[0]//2
