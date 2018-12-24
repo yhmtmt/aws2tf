@@ -186,6 +186,14 @@ class AWS1Log:
         self.yaw_bias_min=0
         self.yaw_bias_dev=0
         
+    def update_model_param(self):
+        self.mdl_3dof_ahd.init()
+        self.mdl_3dof_ahp.init()
+        self.mdl_3dof_as.init()
+        self.mdl_obf_ahd.init()
+        self.mdl_obf_ahp.init()
+        self.mdl_obf_as.init()        
+        
     def load_model_param(self, path_model_param):
         with open(path_model_param) as file:
             self.mdl_params={}
@@ -207,8 +215,7 @@ class AWS1Log:
                 for i in range(len(line)):
                     if(line[i] == '='):
                         par,val = parval.split('=')                        
-                
-                    self.mdl_params[par]=float(val)
+                        self.mdl_params[par]=float(val)
                     
             self.mdl_eng_ctrl.set_params(self.mdl_params)
             self.mdl_rud_ctrl.set_params(self.mdl_params)
@@ -218,15 +225,7 @@ class AWS1Log:
             self.mdl_obf_ahd.set_params(self.mdl_params)
             self.mdl_obf_ahp.set_params(self.mdl_params)
             self.mdl_obf_as.set_params(self.mdl_params)
-            update_model_param()
-
-    def update_model_param(self):
-            self.mdl_3dof_ahd.init()
-            self.mdl_3dof_ahp.init()
-            self.mdl_3dof_as.init()
-            self.mdl_obf_ahd.init()
-            self.mdl_obf_ahp.init()
-            self.mdl_obf_as.init()        
+            self.update_model_param()
             
     def save_model_param(self, path_model_param):
         with open(path_model_param,mode='w') as file:
@@ -681,7 +680,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
         procOpSogRpm(path_log, logs, path_result, force=False)
 
     # loadun parameter
-    parun = loadParun(path_sogrpm)
+    parun = ldl.loadParun(path_sogrpm)
     
     # calculate mode threshold
     # 0 > u astern
@@ -700,7 +699,8 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     rstahp = []
     uset = [ 0.5 * i for i in range(-4, 40)]
     for u in range(-2, 40):
-        eql,eqr=getStableStraightEq(float(u), funcun(parun, float(u)))
+        eql=ldl.getStableStraightEq(float(u), opt.funcun(parun, float(u)))
+        eqr=0
         if u < 0:
             eqstas.append(eql)
             rstas.append(eqr)
@@ -713,37 +713,38 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
 
              
     # loadturns
-    for log_time in logs:             
-        turns = ldl.load(path_result + "/" + log_time)
-        for turn in turns:
+    for log_time in logs:
+        turns = ldl.loadStableTurn(path_result + "/" + log_time)
+        for turn in turns:            
             u = turn[5]
             v = turn[6]
             r = turn[7]
             psi = turn[8]
             n = turn[9]
             if u < 0:
-                m = self.mdl_params["m2"]
-                rx = self.mdl_params["xr2"]
-                ry = self.mdl_params["yr2"]
+                m = log.mdl_params["m2"]
+                rx = log.mdl_params["xr2"]
+                ry = log.mdl_params["yr2"]
             elif u < uthpd:
-                m = self.mdl_params["m0"]
-                rx = self.mdl_params["xr0"]
-                ry = self.mdl_params["yr0"]             
+                m = log.mdl_params["m0"]
+                rx = log.mdl_params["xr0"]
+                ry = log.mdl_params["yr0"]             
             else:             
-                m = self.mdl_params["m1"]
-                rx = self.mdl_params["xr1"]
-                ry = self.mdl_params["yr1"]
+                m = log.mdl_params["m1"]
+                rx = log.mdl_params["xr1"]
+                ry = log.mdl_params["yr1"]
              
             eql,eqr = ldl.getStableTurnEq(turn[5],turn[6],turn[7],turn[8],turn[9], m, rx, ry)
-            if u < 0:
-                eqstas.append(eql)
-                rstas.append(eqr)
-            elif u < uthpd:
-                eqstahd.append(eql)
-                rstahd.append(eqr)
-            else:        
-                eqstahp.append(eql)
-                rstahp.append(eqr)
+            for ieq in range(len(eql)):
+                if u < 0:
+                    eqstas.append(eql[ieq])
+                    rstas.append(eqr[ieq])
+                elif u < uthpd:
+                    eqstahd.append(eql[ieq])
+                    rstahd.append(eqr[ieq])
+                else:        
+                    eqstahp.append(eql[ieq])
+                    rstahp.append(eqr[ieq])
 
     is_valid_paras = False
     is_valid_par_ahd = False
@@ -758,7 +759,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     rstas = np.array(rstas)    
     if(eqstas.shape[0] >= rstas.shape[0]):
         Uas, sas, Vas = np.linalg.svd(eqstas, full_matrices=True)
-        if(is_is_rank_full(sas)):
+        if(is_rank_full(sas)):
             rstas = np.dot(np.dot(np.transpose(Uas),rstas),Vas)
             paras = np.dot(np.linalg.inv(np.diag(sas)), np.transpose(rstas))
             is_valid_paras = True
@@ -767,7 +768,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     rstahd = np.array(rstahd)
     if(eqstahd.shape[0] >= rstahd.shape[0]):
         Uahd, sahd, Vahd = np.linalg.svd(eqstahd, full_matrices=True)
-        if(is_is_rank_full(sahd)):
+        if(is_rank_full(sahd)):
             rstahd = np.dot(np.dot(np.transpose(Uahd),rstahd),Vahd)
             parahd = np.dot(np.linalg.inv(np.diag(sahd)), np.transpose(rstahd))
             is_valid_parahd = True
@@ -776,7 +777,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     rstahp = np.array(rstahp)
     if(eqstahd.shape[0] >= rstahd.shape[0]):
         Uahp, sahp, Vahp = np.linalg.svd(eqstahp, full_matrices=True)
-        if(is_is_rank_full(sas)):
+        if(is_rank_full(sas)):
             rstahp = np.dot(np.dot(np.transpose(Uahp),rstahp),Vahp)
             parahp = np.dot(np.linalg.inv(np.diag(sahp)), np.transpose(rstahp))
             is_valid_parahp = True
@@ -789,13 +790,13 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     def print_mdl_param_update(idx, par):
         stridx="%d" % idx
         for i in range(len(par)):
-            print(stridx+(" %f->%f" % (self.mdl_param[stridx], par[i])))
+            print(stridx+(" %f->%f" % (log.mdl_param[stridx], par[i])))
     
                     
     def set_mdl_param(idx, par):
         stridx="%d" % idx
         for i in range(len(par)):
-            self.mdl_param[parstr[i]+stridx] = par[i]
+            log.mdl_param[parstr[i]+stridx] = par[i]
 
     if(is_valid_parahd):
         print_mdl_param_update(0, parahd)
@@ -809,7 +810,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
         print_mdl_param(2, paras)
         set_mdl_param(2, paras)
 
-    save_model_param(path_model_param)
+    log.save_model_param(path_model_param)
     
 def procOpSogRpm(path_log, logs, path_result, force=False):
     if not os.path.exists(path_result):

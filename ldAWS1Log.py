@@ -1331,6 +1331,8 @@ def saveStableTurn(path, turns):
 
 def loadStableTurn(path):
     turns = np.loadtxt(path+"/turns.csv", delimiter=',')
+    if turns.ndim==1 and turns.shape[0]==13:
+        turns=[turns]        
     return turns
 
 def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
@@ -1363,19 +1365,19 @@ def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
     # dot product  (vrx, vry)^t (nrx, nry)
     vrnr = vrx * nrx + vry * nry
 
-    # dot product (vrx, vry)^t (nrxq, nryq)
-    vrnrq = vrx * nrxq + vry * nryq
+    # dot product (vrx, vry)^t (nrxp, nryp)
+    vrnrp = vrx * nrxp + vry * nryp
     
-    Xcl = 0.5 * vrnrq * (- v - xr * r)
-    Xcd = 0.5 * vrnrq * (u - yr * r)
+    Xcl = 0.5 * vrnrp * (- v - xr * r)
+    Xcd = 0.5 * vrnrp * (u - yr * r)
     Xkl = -vrnr * n * nrx
     Xkq = -nabsn * nrx
-    Ycl = 0.5 * vrnrq * (u - yr * r)
-    Ycd = 0.5 * vrnrq * (v + xr * r)
+    Ycl = 0.5 * vrnrp * (u - yr * r)
+    Ycd = 0.5 * vrnrp * (v + xr * r)
     Ykl = -vrnr * n * nry
     Ykq = -nabsn * nrx
-    Ncl = 0.5 * vrnrq * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
-    Ncd = 0.5 * vrnrq * (-yr * yr * yr * r + xr +xr * xr * r)
+    Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
+    Ncd = 0.5 * vrnrp * (-yr * yr * yr * r + xr +xr * xr * r)
     Nkl = -vrnr * n * (-yr * nrx + xr * nry)
     Nkq = -nabsn * (-yr * nrx +xr * nry)
     
@@ -1390,16 +1392,16 @@ def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
          Ycl, Ycd, Ykl, Ykq],
         [mur, mvr, uu, -uv, -ur, 0, 0, 0, -v, -r, 0, 0, 0, -vabsv, -rabsr,
          Ncl, Ncd, Nkl, Nkq]]
-    res=[[mvr],[mur],[m *(-uv + uu)]]
-    return np.array(eq),np.array(res) 
+    res=[mvr,mur,m *(-uv + uu)]
+    return eq,res
 
 def getStableStraightEq(u, n):
     uabsu = u * abs(u)
-    nabsn = n * absn
+    nabsn = n * abs(n)
     un = u * n
     eq = np.array([0, 0, 0, 0, 0, -u, 0, 0, 0, 0,
                    -uabsu, 0, 0, 0, 0, 0, 0, un, nabsn])
-    return eq,np.array([0])
+    return eq
 
 def estimateYawBias(ts, te, tstvel, lstvel, tstatt, lstatt, terr=[[]]):
     # for sog > th_sog, stable yaw and cog

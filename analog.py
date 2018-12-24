@@ -88,7 +88,9 @@ if len(op) != 0:
         log = AWS1Log.AWS1Log()
         for log_time in logs:
             log.load(path_log, int(log_time))
-            log.play(ts, te)       
+            log.play(ts, te)
+    elif op == "opt3dof":
+        AWS1Log.solve3DoFModel(path_model_param, path_log, logs, path_result, args.force)
     else:
         print("Unknown Operation %s" % op)
             
