@@ -1493,6 +1493,9 @@ def plotun(path, strx, stry, rx, ry):
     for i in range(len(ry)):
         if ry[i] >= 0 and rx[i] < 0:
             continue
+        if ry[i] <= 0 and rx[i] > 0:
+            continue
+        
         _rx.append(rx[i])
         _ry.append(ry[i])
             
