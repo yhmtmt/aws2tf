@@ -167,6 +167,19 @@ class AWS1Log:
         self.model_state={}
         self.mdl_eng_ctrl = sim.c_model_engine_ctrl();
         self.mdl_rud_ctrl = sim.c_model_rudder_ctrl();
+        self.mdl_3dof_ahd = sim.c_model_3dof();
+        self.mdl_3dof_ahp = sim.c_model_3dof();
+        self.mdl_3dof_as = sim.c_model_3dof();
+        self.mdl_obf_ahd = sim.c_model_outboard_force();
+        self.mdl_obf_ahp = sim.c_model_outboard_force();
+        self.mdl_obf_as = sim.c_model_outboard_force();
+        self.mdl_3dof_ahd.alloc_param(0)
+        self.mdl_3dof_ahp.alloc_param(1)
+        self.mdl_3dof_as.alloc_param(2)
+        self.mdl_obf_ahd.alloc_param(0)
+        self.mdl_obf_ahp.alloc_param(1)
+        self.mdl_obf_as.alloc_param(2)
+        
         self.mdl_params={}
         self.yaw_bias=0
         self.yaw_bias_max=0
@@ -195,9 +208,25 @@ class AWS1Log:
                     if(line[i] == '='):
                         par,val = parval.split('=')                        
                 
-                self.mdl_params[par]=float(val)
+                    self.mdl_params[par]=float(val)
+                    
             self.mdl_eng_ctrl.set_params(self.mdl_params)
             self.mdl_rud_ctrl.set_params(self.mdl_params)
+            self.mdl_3dof_ahd.set_params(self.mdl_params)
+            self.mdl_3dof_ahp.set_params(self.mdl_params)
+            self.mdl_3dof_as.set_params(self.mdl_params)
+            self.mdl_obf_ahd.set_params(self.mdl_params)
+            self.mdl_obf_ahp.set_params(self.mdl_params)
+            self.mdl_obf_as.set_params(self.mdl_params)
+            update_model_param()
+
+    def update_model_param(self):
+            self.mdl_3dof_ahd.init()
+            self.mdl_3dof_ahp.init()
+            self.mdl_3dof_as.init()
+            self.mdl_obf_ahd.init()
+            self.mdl_obf_ahp.init()
+            self.mdl_obf_as.init()        
             
     def save_model_param(self, path_model_param):
         with open(path_model_param,mode='w') as file:
@@ -635,23 +664,153 @@ class AWS1Log:
                                  tmdl, lmdl, terr)
         ldl.saveStableTurn(path, turns)
         
-def solve3DoFModel(path_log, logs, path_result, force=False):
-    # loadun parameter
-    # calculate mode threshold
-    # [plane, displacement forward, displacement backward]
+def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
+    #check logs processed
+    log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
+    # load initial model parameter
+    log.load_model_param(path_model_param)
+    
+    # check sogrpm file existence
     path_sogrpm = path_result + "/sogrpm"
     if not os.path.exists(path_sogrpm):
         print("sogrpm result is not found. Now sogrpm is gonna run") 
         procOpSogRpm(path_log, logs, path_result, force=False)
 
+    # loadun parameter
+    parun = loadParun(path_sogrpm)
     
-    # for each mode
-    #   establish stable straight equations
-    #   loadturns
-    #   establish stable turn equations
+    # calculate mode threshold
+    # 0 > u astern
+    # 0 < u < uthpd ahead displacement
+    # uthpd < u ahead plane)
+    uthpd = opt.cu(parun)    
+
+    # -2.0 to 0.0
+    #  0.0 to uthpd
+    # uthpd to 40.0
+    eqstas = []
+    rstas = []
+    eqstahd = []
+    rstahd = []
+    eqstahp = []
+    rstahp = []
+    uset = [ 0.5 * i for i in range(-4, 40)]
+    for u in range(-2, 40):
+        eql,eqr=getStableStraightEq(float(u), funcun(parun, float(u)))
+        if u < 0:
+            eqstas.append(eql)
+            rstas.append(eqr)
+        elif u < uthpd:
+            eqstahd.append(eql)
+            rstahd.append(eqr)
+        else:        
+            eqstahp.append(eql)
+            rstahp.append(eqr)
+
+             
+    # loadturns
+    for log_time in logs:             
+        turns = ldl.load(path_result + "/" + log_time)
+        for turn in turns:
+            u = turn[5]
+            v = turn[6]
+            r = turn[7]
+            psi = turn[8]
+            n = turn[9]
+            if u < 0:
+                m = self.mdl_params["m2"]
+                rx = self.mdl_params["xr2"]
+                ry = self.mdl_params["yr2"]
+            elif u < uthpd:
+                m = self.mdl_params["m0"]
+                rx = self.mdl_params["xr0"]
+                ry = self.mdl_params["yr0"]             
+            else:             
+                m = self.mdl_params["m1"]
+                rx = self.mdl_params["xr1"]
+                ry = self.mdl_params["yr1"]
+             
+            eql,eqr = ldl.getStableTurnEq(turn[5],turn[6],turn[7],turn[8],turn[9], m, rx, ry)
+            if u < 0:
+                eqstas.append(eql)
+                rstas.append(eqr)
+            elif u < uthpd:
+                eqstahd.append(eql)
+                rstahd.append(eqr)
+            else:        
+                eqstahp.append(eql)
+                rstahp.append(eqr)
+
+    is_valid_paras = False
+    is_valid_par_ahd = False
+    is_valid_par_ahp = False
+    def is_rank_full(s,eps=1.0e-6):
+        for i in range(s.shape[0]):
+            if(abs(s[i]) < eps):
+                return False
+        return True
+
+    eqstas = np.array(eqstas)
+    rstas = np.array(rstas)    
+    if(eqstas.shape[0] >= rstas.shape[0]):
+        Uas, sas, Vas = np.linalg.svd(eqstas, full_matrices=True)
+        if(is_is_rank_full(sas)):
+            rstas = np.dot(np.dot(np.transpose(Uas),rstas),Vas)
+            paras = np.dot(np.linalg.inv(np.diag(sas)), np.transpose(rstas))
+            is_valid_paras = True
+    
+    eqstahd = np.array(eqstahd)
+    rstahd = np.array(rstahd)
+    if(eqstahd.shape[0] >= rstahd.shape[0]):
+        Uahd, sahd, Vahd = np.linalg.svd(eqstahd, full_matrices=True)
+        if(is_is_rank_full(sahd)):
+            rstahd = np.dot(np.dot(np.transpose(Uahd),rstahd),Vahd)
+            parahd = np.dot(np.linalg.inv(np.diag(sahd)), np.transpose(rstahd))
+            is_valid_parahd = True
+             
+    eqstahp = np.array(eqstahp)
+    rstahp = np.array(rstahp)
+    if(eqstahd.shape[0] >= rstahd.shape[0]):
+        Uahp, sahp, Vahp = np.linalg.svd(eqstahp, full_matrices=True)
+        if(is_is_rank_full(sas)):
+            rstahp = np.dot(np.dot(np.transpose(Uahp),rstahp),Vahp)
+            parahp = np.dot(np.linalg.inv(np.diag(sahp)), np.transpose(rstahp))
+            is_valid_parahp = True
+
+    
     #   solve if rank satisfied the dof.
-    print("still in implementation")
+    # paramter vectors (ma_yv=ma_nr, and ma_nr is not appeared in this eq set)
+    parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
+
+    def print_mdl_param_update(idx, par):
+        stridx="%d" % idx
+        for i in range(len(par)):
+            print(stridx+(" %f->%f" % (self.mdl_param[stridx], par[i])))
+    
+                    
+    def set_mdl_param(idx, par):
+        stridx="%d" % idx
+        for i in range(len(par)):
+            self.mdl_param[parstr[i]+stridx] = par[i]
+
+    if(is_valid_parahd):
+        print_mdl_param_update(0, parahd)
+        set_mdl_param(0, parahd)
         
+    if(is_valid_parahp):
+        print_mdl_param(1, parahp)
+        set_mdl_param(1, parahp)
+
+    if(is_valid_paras):
+        print_mdl_param(2, paras)
+        set_mdl_param(2, paras)
+
+    save_model_param(path_model_param)
+    
 def procOpSogRpm(path_log, logs, path_result, force=False):
     if not os.path.exists(path_result):
         os.mkdir(path_result)

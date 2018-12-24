@@ -1330,11 +1330,11 @@ def saveStableTurn(path, turns):
     np.savetxt(path+"/turns.csv", turns, delimiter=',', header=str, fmt="%.2f")
 
 def loadStableTurn(path):
-    np.loadtxt(path+"/turns.csv", turns, delimiter=',')
-    
+    turns = np.loadtxt(path+"/turns.csv", delimiter=',')
+    return turns
+
 def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
-    # build a set of stable turn equations
-    
+    # build a set of stable turn equations    
     uabsu = u * abs(u)
     vabsv = v * abs(v)
     rabsr = r * abs(r)
