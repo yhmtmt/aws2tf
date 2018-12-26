@@ -230,7 +230,7 @@ class AWS1Log:
     def save_model_param(self, path_model_param):
         with open(path_model_param,mode='w') as file:
             for par,val in self.mdl_params.items():
-                txt="%s=%f\n" % (par, val)
+                txt="%s=%0.12f\n" % (par, val)
                 file.write(txt)
     
     def load(self, path_aws1_log, log_time=-1, dt=0.1):
@@ -798,7 +798,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     def print_mdl_param_update(idx, par):
         stridx="%d" % idx
         for i in range(len(par)):
-            print(parstr[i]+stridx+(" %f->%f" % (log.mdl_params[parstr[i]+stridx], par[i])))
+            print(parstr[i]+stridx+(" %0.12f->%0.12f" % (log.mdl_params[parstr[i]+stridx], par[i])))
     
                     
     def set_mdl_param(idx, par):
