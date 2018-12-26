@@ -756,12 +756,21 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
         return True
 
     eqstas = np.array(eqstas)
-    rstas = np.array(rstas)    
+    rstas = np.array(rstas)
+    # USVx=b
+    # (USV)^t(USV)x=b
+    # V^tS^tU^tUSVx=V^tS^tU^tb
+    # x=(V^tS^tSV)^-1V^tS^tU^t b
+    # x=V^t(S^tS)^-1VV^tS^tU^t b
+    # x=V^t(S^tS)^-1S^tU^t b
+
+    def psinv(U, s, V):
+        return np.dot(np.dot(np.transpose(V),np.pad(np.diag(1/s), [(0,V.shape[1]-s.shape[0]),(0,U.shape[0]-s.shape[0])],'constant')),np.transpose(U))
     if(eqstas.shape[0] >= rstas.shape[0]):
         Uas, sas, Vas = np.linalg.svd(eqstas, full_matrices=True)
         if(is_rank_full(sas)):
-            rstas = np.dot(np.dot(np.transpose(Uas),rstas),Vas)
-            paras = np.dot(np.linalg.inv(np.diag(sas)), np.transpose(rstas))
+            eqstas_inv=psinv(Uas,sas,Vas)
+            paras = np.dot(eqstas_inv, rstas)
             is_valid_paras = True
     
     eqstahd = np.array(eqstahd)
@@ -769,8 +778,8 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     if(eqstahd.shape[0] >= rstahd.shape[0]):
         Uahd, sahd, Vahd = np.linalg.svd(eqstahd, full_matrices=True)
         if(is_rank_full(sahd)):
-            rstahd = np.dot(np.dot(np.transpose(Uahd),rstahd),Vahd)
-            parahd = np.dot(np.linalg.inv(np.diag(sahd)), np.transpose(rstahd))
+            eqstahd_inv = psinv(Uahd, sahd, Vahd)
+            parahd = np.dot(eqstahd_inv, rstahd)
             is_valid_parahd = True
              
     eqstahp = np.array(eqstahp)
@@ -778,36 +787,35 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     if(eqstahd.shape[0] >= rstahd.shape[0]):
         Uahp, sahp, Vahp = np.linalg.svd(eqstahp, full_matrices=True)
         if(is_rank_full(sas)):
-            rstahp = np.dot(np.dot(np.transpose(Uahp),rstahp),Vahp)
-            parahp = np.dot(np.linalg.inv(np.diag(sahp)), np.transpose(rstahp))
+            eqstahp_inv = psinv(Uahp, sahp, Vahp)
+            parahp = np.dot(eqstahp_inv, rstahp)            
             is_valid_parahp = True
-
     
     #   solve if rank satisfied the dof.
-    # paramter vectors (ma_yv=ma_nr, and ma_nr is not appeared in this eq set)
+    # paramter vectors (ma_yr=ma_nv, and ma_nr is not appeared in this eq set)
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
 
     def print_mdl_param_update(idx, par):
         stridx="%d" % idx
         for i in range(len(par)):
-            print(stridx+(" %f->%f" % (log.mdl_param[stridx], par[i])))
+            print(parstr[i]+stridx+(" %f->%f" % (log.mdl_params[parstr[i]+stridx], par[i])))
     
                     
     def set_mdl_param(idx, par):
         stridx="%d" % idx
         for i in range(len(par)):
-            log.mdl_param[parstr[i]+stridx] = par[i]
+            log.mdl_params[parstr[i]+stridx] = par[i]
 
     if(is_valid_parahd):
         print_mdl_param_update(0, parahd)
         set_mdl_param(0, parahd)
         
     if(is_valid_parahp):
-        print_mdl_param(1, parahp)
+        print_mdl_param_update(1, parahp)
         set_mdl_param(1, parahp)
 
     if(is_valid_paras):
-        print_mdl_param(2, paras)
+        print_mdl_param_update(2, paras)
         set_mdl_param(2, paras)
 
     log.save_model_param(path_model_param)
