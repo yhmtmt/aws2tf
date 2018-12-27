@@ -300,12 +300,12 @@ class AWS1Log:
 
             sog = vstvel[1] * mps
             vstatt[6] = self.yaw_bias
-            beta = (vstvel[0] - (vstatt[2] + vstatt[6])) * radian
+            beta = (vstvel[0] - (vstatt[2] + vstatt[6]))
             if(beta > 180):
                 beta -= 360
             elif (beta < -180):
                 beta += 360
-                
+            beta *= radian
             u = sog * math.cos(beta)
             v = sog * math.sin(beta)
             r = vstatt[5]
