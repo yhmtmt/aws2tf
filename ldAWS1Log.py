@@ -1358,6 +1358,118 @@ def loadStableTurn(path):
         turns=[turns]        
     return turns
 
+def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
+    # build a set of stable turn equations    
+    vabsv = v * abs(v)
+    rabsr = r * abs(r)
+    nabsn = n * abs(n)
+
+    vr = v * r
+    ur = u * r
+    uv = u * v
+    uu = u * u
+    
+    mrr = m * r * r
+    mur = m * ur
+    mvr = m * vr
+    mdr = m * dr
+    mdu = m * du
+    mdv = m * dv
+    
+    # (nrx, nry) radder direction vector
+    nrx = math.cos(psi)
+    nry = math.sin(psi)
+
+    # (nrxp, nryp) the vector  perpendicular to (nrx, nry)
+    nrxp = -nry
+    nryp = nrx
+
+    # (vrx, vry) velocity of rudder 
+    vrx = u - yr * r
+    vry = v + xr * r
+
+    # dot product  (vrx, vry)^t (nrx, nry)
+    vrnr = vrx * nrx + vry * nry
+
+    # dot product (vrx, vry)^t (nrxp, nryp)
+    vrnrp = vrx * nrxp + vry * nryp
+
+    Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
+    Ncd = 0.5 * vrnrp * (-yr * yr * yr * r + xr +xr * xr * r)
+    Nkl = -vrnr * n * (-yr * nrx + xr * nry)
+    Nkq = -nabsn * (-yr * nrx +xr * nry)
+    
+    if vrnr < 0:
+        Xcl = -Xcl        
+        Ycl = -Ycl
+        Ncl = -Ncl
+
+    eq = [mur, mvr, uu, -uv, -ur, 0, 0, 0, -v, -r, 0, 0, 0, -vabsv, -rabsr,
+         Ncl, Ncd, Nkl, Nkq]
+    
+    Ndr = 0;
+    for iterm in range(len(eq)):
+        Ndr += eq[iterm] * par[iterm]
+    
+    return Ndr / dr
+
+
+def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
+    # build a set of stable turn equations    
+    uabsu = u * abs(u)
+    vabsv = v * abs(v)
+    rabsr = r * abs(r)
+    nabsn = n * abs(n)
+
+    vr = v * r
+    ur = u * r
+    
+    mrr = m * r * r
+    mur = m * ur
+    mvr = m * vr
+    mdr = m * dr
+    mdu = m * du
+    mdv = m * dv
+    
+    # (nrx, nry) radder direction vector
+    nrx = math.cos(psi)
+    nry = math.sin(psi)
+
+    # (nrxp, nryp) the vector  perpendicular to (nrx, nry)
+    nrxp = -nry
+    nryp = nrx
+
+    # (vrx, vry) velocity of rudder 
+    vrx = u - yr * r
+    vry = v + xr * r
+
+    # dot product  (vrx, vry)^t (nrx, nry)
+    vrnr = vrx * nrx + vry * nry
+
+    # dot product (vrx, vry)^t (nrxp, nryp)
+    vrnrp = vrx * nrxp + vry * nryp
+    
+    Xcl = 0.5 * vrnrp * (- v - xr * r)
+    Xcd = 0.5 * vrnrp * (u - yr * r)
+    Xkl = -vrnr * n * nrx
+    Xkq = -nabsn * nrx
+    Ycl = 0.5 * vrnrp * (u - yr * r)
+    Ycd = 0.5 * vrnrp * (v + xr * r)
+    Ykl = -vrnr * n * nry
+    Ykq = -nabsn * nrx
+    
+    if vrnr < 0:
+        Xcl = -Xcl        
+        Ycl = -Ycl
+
+    eq=[[-mrr, -mdr, -du, vr, r, -u, 0, 0, 0, 0, -uabsu, 0, 0, 0, 0,
+         Xcl, Xcd, Xkl, Xkq],
+        [mdr, -mrr, ur, -dv, -dr, 0, -u, -r, 0, 0, 0, -vabsv, -rabsr, 0, 0,
+         Ycl, Ycd, Ykl, Ykq]]
+    res=[mvr-mdu, mur-mdv]
+    return eq,res
+    
+
 def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
     # build a set of stable turn equations    
     uabsu = u * abs(u)
