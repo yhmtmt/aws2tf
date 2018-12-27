@@ -9,6 +9,17 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import ldAWS1Video as ldv
 import Opt as opt
+from scipy import signal
+
+savgol_att=False
+savgol_window_att=5
+savgol_dim_att=2
+savgol_vel=True
+savgol_window_vel=5
+savgol_dim_vel=2
+savgol_rpm=False
+savgol_window_rpm=5
+savgol_dim_rpm=2
 
 chantypes=["ais_obj", "aws1_ctrl_inst", "aws1_ctrl_stat", "aws1_ctrl_inst", "engstate", "state"]
 channels=["ais_obj", "aws1_ctrl_ap1", "aws1_ctrl_stat", "aws1_ctrl_ui", "engstate", "state"]
@@ -561,7 +572,7 @@ def loadLog(path_aws1_log, log_time=-1):
     stdp = concatSectionData(stdp)
     statt = concatSectionData(statt)
     st9dof = concatSectionData(st9dof)
-
+    
     return {'apinst':apinst, 'uiinst':uiinst, 'ctrlst':ctrlst, 
         'stpos':stpos, 'stvel':stvel, 'statt':statt, 'st9dof':st9dof, 'stdp':stdp, 
         'engr':engr, 'engd':engd, 'strm':{'t':tstrm, 'strm':strm}}, log_time
@@ -676,6 +687,8 @@ def loadEngstate(fname, log_time):
     trapid = np.array(trapid)
     tdyn = np.array(tdyn)
     rpm = np.array(rpm)
+    if savgol_rpm:
+        rpm = signal.savgol_filter(rpm, savgol_window_rpm, savgol_dim_rpm, mode="mirror")
     trim = np.array(trim)
     valt = np.array(valt)
     temp = np.array(temp)
@@ -913,10 +926,16 @@ def loadState(fname, log_time):
     lon = np.array(lon)
     alt = np.array(alt)
     roll = np.array(roll)
+    if savgol_att:
+        roll = signal.savgol_filter(roll, savgol_window_att, savgol_dim_att, mode="mirror")
     droll = diffDataVec(tatt, roll)
     pitch = np.array(pitch)
+    if savgol_att:
+        pitch = signal.savgol_filter(pitch, savgol_window_att, savgol_dim_att, mode="mirror")
     dpitch = diffDataVec(tatt, pitch)
     yaw = np.array(yaw)
+    if savgol_att:
+        yaw = signal.savgol_filter(yaw, savgol_window_att, savgol_dim_att, mode="mirror")
     dyaw = diffDataYaw(tatt, yaw)
     byaw = np.zeros(yaw.shape[0])
     mx = np.array(mx)
@@ -929,8 +948,12 @@ def loadState(fname, log_time):
     gy = np.array(gy)
     gz = np.array(gz)
     cog = np.array(cog)
+    if savgol_vel:
+        cog = signal.savgol_filter(cog, savgol_window_vel, savgol_dim_vel, mode="nearest")
     dcog = diffDataCog(tvel, cog)
     sog = np.array(sog)
+    if savgol_vel:
+        sog = signal.savgol_filter(sog, savgol_window_vel, savgol_dim_vel, mode="nearest")
     dsog = diffDataVec(tvel, sog)
     dsog = dsog * (1852.0/3600.0) # converting unit kts/sec into m/sec 
     depth = np.array(depth)
