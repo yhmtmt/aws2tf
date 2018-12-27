@@ -807,14 +807,17 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
             log.mdl_params[parstr[i]+stridx] = par[i]
 
     if(is_valid_parahd):
+        print("AHD min eigen val %e" % np.min(sahd))
         print_mdl_param_update(0, parahd)
         set_mdl_param(0, parahd)
         
     if(is_valid_parahp):
+        print("AHP min eigen val %e" % np.min(sahp))
         print_mdl_param_update(1, parahp)
         set_mdl_param(1, parahp)
 
     if(is_valid_paras):
+        print("AS min eigen val %e" % np.min(sas))        
         print_mdl_param_update(2, paras)
         set_mdl_param(2, paras)
 
