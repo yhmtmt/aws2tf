@@ -662,7 +662,40 @@ class AWS1Log:
                                  tctrlst, lctrlst,
                                  tmdl, lmdl, terr)
         ldl.saveStableTurn(path, turns)
-        
+
+def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False):
+    #check logs processed
+    log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
+    # load initial model parameter
+    log.load_model_param(path_model_param)
+
+    # check sogrpm file existence
+    path_sogrpm = path_result + "/sogrpm"
+    if not os.path.exists(path_sogrpm):
+        print("sogrpm result is not found. Now sogrpm is gonna run") 
+        procOpSogRpm(path_log, logs, path_result, force=False)
+
+    # loadun parameter
+    parun = ldl.loadParun(path_sogrpm)
+    
+    # calculate mode threshold
+    # 0 > u astern (mode 2)
+    # 0 < u < uthpd ahead displacement (mode 0)
+    # uthpd < u ahead plane (mode 1)
+    uthpd = opt.cu(parun)    
+    
+    # load all u,v,r,phi,n
+    # apply savgol on u,v,r,n
+    # calculate du,dv,dr
+    # select data range with non zero n
+    # split data into three mode
+    
+
+    
 def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     #check logs processed
     log = AWS1Log()

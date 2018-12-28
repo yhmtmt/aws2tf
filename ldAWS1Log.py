@@ -14,7 +14,7 @@ from scipy import signal
 savgol_att=False
 savgol_window_att=5
 savgol_dim_att=2
-savgol_vel=True
+savgol_vel=False
 savgol_window_vel=5
 savgol_dim_vel=2
 savgol_rpm=False
