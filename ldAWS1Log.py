@@ -158,6 +158,89 @@ def intersectTimeRanges(trng0, trng1):
                     pass
     return trng
 
+def sampleMaxDistPoints(nsmpl, vecs):
+    # calculate normalization factor
+    vmax=[]
+    vmin=[]
+    ntotal = 0
+    ndim = len(vecs)
+    for vec in vecs:
+        vmax.append(np.max(vec))
+        vmin.append(np.min(vec))
+        ntotal = len(vec)
+        
+    vfac=[]
+    for ivec in range(ndim):
+        vfac.append(1.0/(vmax[ivec] - vmin[ivec]))
+
+    vfac=np.array(vfac)
+    dtable=np.zeros(shape=(nsmpl,nsmpl), dtype=float64)
+    samples=np.zeros(shape=(nsmpl,len(vecs)), dtype=float64)
+    
+    # fill first nsmpl samples
+    for ivec in range(len(vecs)):
+        for ismple in range(nsmpl):
+            samples[ismple][ivec] = vecs[ivec][ismple]
+        
+    # calculate distance table
+    for i in range(0, nsmpl):
+        for j in range(i, nsmpl):
+            if i==j:
+                dtable[i][i] =  0.0
+            else:
+                D = 0
+                for k in range(ndim):
+                    d=(samples[i][k]-samples[j][k]) * vfac[k]
+                    D+=abs(d)
+                dtable[i][j] = dtable[j][i] = D
+                
+    # forward sampling loop nsmpl to ntotal
+    smpl = np.zeros(shape=(ndim), dtype=float64)
+    dist = np.zeros(shape=(nsmpl), dtype=float64)
+    ddiff = np.zeros(shape=(nsmpl), dtype=float64)
+    for ismpl in range(nsmpl, ntotal):
+        for i in range(ndim):
+            smpl[i] = vecs[i][ismpl]
+            
+        # calculate distances from new sample
+        for jsmpl in range(nsmpl):
+            dist[jsmpl]=0.0
+            for i in range(ndim):
+                d = (samples[jsmpl][i] - smpl[i]) * vfac[i]
+                dist[jsmpl] += d
+
+        # calculate distance differences by replacing
+        jsmpl_max=-1
+        ddiff_max=0.0
+        for jsmpl in range(nsmpl):
+            ddiff[jsmpl]=np.sum(dist)-np.sum(dtable[jsmpl])-dist[jsmpl]
+            if(ddiff_max < ddiff[jsmpl]):
+                ddiff_max = ddiff[jsmpl]
+                jsmpl_max = jsmpl
+            
+        if(ddiff_max != 0.0):
+            # replace sapmle
+            for i in range(ndim):
+                samples[jsmpl][i] = smpl[i]
+            #updating dtable
+            for i in range(nsmpl):
+                if i == jsmpl:
+                    dtable[i][i] = 0.0
+                else:
+                    dtable[jsmpl][i] = dtable[i][jsmpl] = dist[i]
+    return samples
+    
+        
+def getTimeRangeVecs(t, v, trng):
+    for tr in trng:
+        ix0s,ix0e = seekLogTime(tx, tr[0])
+        ix1s,ix1e = seekLogTime(tx, tr[1])
+        for ix in range(ix0e, ix1s):           
+            t = t[ix]
+            x = v[ix]
+            x.append(v[ix])
+    return np.array(x)
+
 def relateTimeRangeVecs(tx, ty, vx, vy, trng):
     ''' 
        set of related points is calculated from two sets of time sequence:
@@ -1667,6 +1750,26 @@ def loadRelun(path):
     csvname="un.csv"
     rel = np.loadtxt(path+"/"+csvname, delimiter=',')
     return rel[:][0],rel[:][1]
+
+def load_u_v_r_phi_n(path):
+    header=path+"/"+"model_state"
+    fname_u=header+"u.csv"
+    fname_v=header+"v.csv"
+    fname_r=header+"r.csv"
+    fname_phi=header+"phi.csv"
+    fname_n=header+"n.csv"
+    u=np.loadtxt(fname_u, delimiter=',')
+    t = u[:][0]
+    u = u[:][1]
+    v=np.loadtxt(fname_v, delimiter=',')
+    v = u[:][1]
+    r=np.loadtxt(fname_r, delimiter=',')
+    r = r[:][1]
+    phi=np.loadtxt(fname_phi, delimiter=',')
+    phi = phi[:][1]
+    n=np.loadtxt(fname_n, delimiter=',')
+
+    return t,u,v,r,phi,n
     
 def saveParun(path, par):
     csvname="parun.csv"

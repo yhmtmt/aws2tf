@@ -14,6 +14,8 @@ import cv2
 import ldAWS1Log as ldl
 import Opt as opt
 import pyawssim as sim
+from scipy import signal
+
 
 #pdb.set_trace()
 # Ship coordinate
@@ -687,15 +689,62 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     # 0 < u < uthpd ahead displacement (mode 0)
     # uthpd < u ahead plane (mode 1)
     uthpd = opt.cu(parun)    
-    
-    # load all u,v,r,phi,n
-    # apply savgol on u,v,r,n
-    # calculate du,dv,dr
-    # select data range with non zero n
-    # split data into three mode
-    
 
-    
+    for log_time in logs:
+        # load all u,v,r,phi,n
+        t,u,v,r,phi,n=ldl.load_u_v_r_phi_n(path_result)
+        
+        # apply savgol on u,v,r,n
+        u=signal.savgol_filter(u, 9, 3, mode="mirror")
+        v=signal.savgol_filter(v, 9, 3, mode="mirror")
+        r=signal.savgol_filter(r, 9, 3, mode="mirror")
+        n=signal.savgol_filter(n, 9, 3, mode="mirror")
+        
+        # calculate du,dv,dr
+        du=ldl.diffDataVec(t, u)
+        dv=ldl.diffDataVec(t, v)
+        dr=ldl.diffDataVec(t, r)
+        
+        # select data range with non zero n
+        # split data into three mode        
+        tahd = findInRangeTimeRanges(t, n, vmax=6000, vmin=600)
+        tpln = findInRangeTimeRanges(t, u, vmax=30, vmin=uthpd)
+        tdsp = complementTimeRange(t, tpln)
+        tahddsp = intersectTimeRanges(tahd, tdsp) # mode 0
+        tahdpln = intersectTimeRanges(tahd, tpln) # mode 1
+        tast = findInRangeTimeRanges(t, n, vmax=-600, vmin=6000) # mode 2
+        
+        uahddsp = ldl.getTimeRangeVecs(t, u, tahddsp)
+        duahddsp = ldl.getTimeRangeVecs(t, du, tahddsp)        
+        vahddsp = ldl.getTimeRangeVecs(t, v, tahddsp)
+        dvahddsp = ldl.getTimeRangeVecs(t, dv, tahddsp)
+        rahddsp = ldl.getTimeRangeVecs(t, r, tahddsp)
+        drahddsp = ldl.getTimeRangeVecs(t, dr, tahddsp)        
+        nahddsp = ldl.getTimeRangeVecs(t, n, tahddsp)
+        phiahddsp = ldl.getTimeRangeVecs(t, phi, tahddsp)
+
+        uahdpln = ldl.getTimeRangeVecs(t, u, tahdpln)
+        duahdpln = ldl.getTimeRangeVecs(t, du, tahdpln)        
+        vahdpln = ldl.getTimeRangeVecs(t, v, tahdpln)
+        dvahdpln = ldl.getTimeRangeVecs(t, dv, tahdpln)
+        rahdpln = ldl.getTimeRangeVecs(t, r, tahdpln)
+        drahdpln = ldl.getTimeRangeVecs(t, dr, tahdpln)        
+        nahdpln = ldl.getTimeRangeVecs(t, n, tahdpln)
+        phiahdpln = ldl.getTimeRangeVecs(t, phi, tahdpln)
+        
+        uast = ldl.getTimeRangeVecs(t, u, tast)
+        duast = ldl.getTimeRangeVecs(t, du, tast)        
+        vast = ldl.getTimeRangeVecs(t, v, tast)
+        dvast = ldl.getTimeRangeVecs(t, dv, tast)
+        rast = ldl.getTimeRangeVecs(t, r, tast)
+        drast = ldl.getTimeRangeVecs(t, dr, tast)        
+        nast = ldl.getTimeRangeVecs(t, n, tast)
+        phiast = ldl.getTimeRangeVecs(t, phi, tast)
+        
+        # ldl.get3DoFEqXY
+        # ldl.get3DoFEqN
+        
+        
 def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     #check logs processed
     log = AWS1Log()
