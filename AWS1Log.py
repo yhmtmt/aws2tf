@@ -689,7 +689,25 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     # 0 < u < uthpd ahead displacement (mode 0)
     # uthpd < u ahead plane (mode 1)
     uthpd = opt.cu(parun)    
+    if u < 0:
+        m_as = log.mdl_params["m2"]
+        rx_as = log.mdl_params["xr2"]
+        ry_as = log.mdl_params["yr2"]
+    elif u < uthpd:
+        m_ad = log.mdl_params["m0"]
+        rx_ad = log.mdl_params["xr0"]
+        ry_ad = log.mdl_params["yr0"]             
+    else:             
+        m_ap = log.mdl_params["m1"]
+        rx_ap = log.mdl_params["xr1"]
+        ry_ap = log.mdl_params["yr1"]
 
+    nsmpl=32
+    smpl_ad=None
+    smpl_ap=None
+    smpl_as=None
+    
+    # sampling nsmpl vectors for each log
     for log_time in logs:
         # load all u,v,r,phi,n
         t,u,v,r,phi,n=ldl.load_u_v_r_phi_n(path_result)
@@ -740,11 +758,158 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         drast = ldl.getTimeRangeVecs(t, dr, tast)        
         nast = ldl.getTimeRangeVecs(t, n, tast)
         phiast = ldl.getTimeRangeVecs(t, phi, tast)
+
+        smpl = ldl.sampleMaxDistPoints(nsmpl, [uast,duast,vast,dvast,rast,drast,phiast,nast])
+        if(smpl_as == None):
+            smpl_as = smpl
+        else:
+            smpl_as = np.concatenate(smpl_as, smpl)
         
-        # ldl.get3DoFEqXY
-        # ldl.get3DoFEqN
+        smpl = ldl.sampleMaxDistPoints(nsmpl, [uahdpln,duahdpln,vahdpln,dvahdpln,rahdpln,drahdpln,phiahdpln,nahdpln])
+        if(smpl_ap == None):
+            smpl_ap = smpl
+        else:
+            smpl_ap = np.concatenate(smpl_ap, smpl)
         
+        smpl = ldl.sampleMaxDistPoints(nsmpl, [uahddsp,duahddsp,vahddsp,dvahddsp,rahddsp,drahddsp,phiahddsp,nahddsp])
+        if(smpl_ad == None):
+            smpl_ad = smpl
+        else:
+            smpl_ad = np.concatenate(smpl_ad, smpl)
+
+    parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
+
+
+    def reorder_mdl_param(idx, parxy, parn):
+        par={}
+        stridx="%d" % idx
+        iparxy=0
+        for i in range(len(parstr)):
+            str=parstr[i]+stridx
+            if parstr[i] != 'ma_nr':                
+                par[str]=parxy[iparxy]
+            else:
+                par[str]=parn
+        return par
+                    
+    def set_mdl_param(par):
+        for j in range(3):
+            stridx="%d" % j            
+            for i in range(len(parstr)):
+                key=parstr[i]+stridx
+                log.mdl_params[key] = par[key]
+
+    def print_mdl_param_update(par):
+        for j in range(3):
+            stridx="%d" % j            
+            for i in range(len(par)):
+                key=parstr[i]+stridx
+                print(parstr[i]+stridx+(" %0.12f->%0.12f" % (log.mdl_params[key], par[key])))
+            
+    def is_rank_full(s,eps=1.0e-6):
+        for i in range(s.shape[0]):
+            if(abs(s[i]) < eps):
+                return False
+        return True
+
+    def psinv(U, s, V):
+        return np.dot(np.dot(np.transpose(V),np.pad(np.diag(1/s), [(0,V.shape[1]-s.shape[0]),(0,U.shape[0]-s.shape[0])],'constant')),np.transpose(U))
+            
+    eqxy_as=[]
+    resxy_as=[]
+    for ismpl in range(smpl_as.shape[0]):        
+        eqxy,resxy=get3DoFEqXY(smpl_as[ismpl][0], smpl_as[ismpl][1],
+                            smpl_as[ismpl][2], smpl_as[ismpl][3],
+                            smpl_as[ismpl][4], smpl_as[ismpl][5],
+                            smpl_as[ismpl][6], smpl_as[ismpl][7],
+                            m_as, rx_as, ry_as)
+        eqxy_as.append(eqxy[0])
+        eqxy_as.append(eqxy[1])
+        resxy_as.append(resxy[0])
+        resxy_as.append(resxy[1])
         
+    eqxy_as = np.array(eqxy_as)
+    resxy_as = np.array(resxy_as)
+    Uas,sas,Vas=np.linalg.svd(eqxy_as, full_matrices=True)
+    if(is_rank_full(sas)):
+        eqxy_as_inv=psinv(Uas,sas,Vas)
+        paras=np.dot(eqxy_as_inv, rsxy_as)
+        Ndr_as=0.0
+        for ismpl in range(smpl_as.shape[0]):
+            Ndr_as+=get3DoFEqN(smpl_as[ismpl][0], smpl_as[ismpl][1],
+                            smpl_as[ismpl][2], smpl_as[ismpl][3],
+                            smpl_as[ismpl][4], smpl_as[ismpl][5],
+                            smpl_as[ismpl][6], smpl_as[ismpl][7],
+                            m_as, rx_as, ry_as, paras)
+        Ndr_as/=smpl_as.shape[0]        
+
+        paras=reorder_mdl_param(2, paras, Ndr_as)
+        
+    eqxy_ap=[]
+    resxy_ap=[]
+    for ismpl in range(smpl_ap.shape[0]):
+        eqxy,resxy=get3DoFEqXY(smpl_ap[ismpl][0], smpl_ap[ismpl][1],
+                            smpl_ap[ismpl][2], smpl_ap[ismpl][3],
+                            smpl_ap[ismpl][4], smpl_ap[ismpl][5],
+                            smpl_ap[ismpl][6], smpl_ap[ismpl][7],
+                               m_ap, rx_ap, ry_ap)
+        eqxy_ap.append(eqxy[0])
+        eqxy_ap.append(eqxy[1])
+        resxy_ap.append(resxy[0])
+        resxy_ap.append(resxy[1])
+    eqxy_ap = np.array(eqxy_ap)
+    resxy_ap = np.array(resxy_ap)
+    
+    Uap,sap,Vap=np.linalg.svd(eqxy_ap, full_matrices=True)
+    if(is_rank_full(sap)):
+        eqxy_ap_inv=psinv(Uap,sap,Vap)
+        parap=np.dot(eqxy_ap_inv, rsxy_ap)
+        Ndr_ap=0.0
+        for ismpl in range(smpl_ap.shape[0]):
+            Ndr_ap+=get3DoFEqN(smpl_ap[ismpl][0], smpl_ap[ismpl][1],
+                            smpl_ap[ismpl][2], smpl_ap[ismpl][3],
+                            smpl_ap[ismpl][4], smpl_ap[ismpl][5],
+                            smpl_ap[ismpl][6], smpl_ap[ismpl][7],
+                            m_ap, rx_ap, ry_ap, parap)
+        Ndr_ap/=smpl_ap.shape[0]
+        parap = reorder_mdl_param(1, parap, Ndr_ap)
+        
+    eqxy_ad=[]
+    resxy_ad=[]    
+    for ismpl in range(smpl_ad.shape[0]):
+        eqxy,resxy=get3DoFEqXY(smpl_ad[ismpl][0], smpl_ad[ismpl][1],
+                            smpl_ad[ismpl][2], smpl_ad[ismpl][3],
+                            smpl_ad[ismpl][4], smpl_ad[ismpl][5],
+                            smpl_ad[ismpl][6], smpl_ad[ismpl][7],
+                            m_ad, rx_ad, ry_ad)
+        eqxy_ad.append(eqxy[0])
+        eqxy_ad.append(eqxy[1])
+        resxy_ad.append(resxy[0])
+        resxy_ad.append(resxy[1])
+    eqxy_ad = np.array(eqxy_ad)
+    resxy_ad = np.array(resxy_ad)
+
+    Uad,sad,Vad=np.linalg.svd(eqxy_ad, full_matrices=True)
+    if(is_rank_full(sad)):
+        eqxy_ad_inv=psinv(Uad,sad,Vad)
+        parad=np.dot(eqxy_ad_inv, rsxy_ad)
+        Ndr_ad=0.0
+        for ismpl in range(smpl_ad.shape[0]):
+            Ndr_ad+=get3DoFEqN(smpl_ad[ismpl][0], smpl_ad[ismpl][1],
+                            smpl_ad[ismpl][2], smpl_ad[ismpl][3],
+                            smpl_ad[ismpl][4], smpl_ad[ismpl][5],
+                            smpl_ad[ismpl][6], smpl_ad[ismpl][7],
+                            m_ad, rx_ad, ry_ad, parad)
+        Ndr_ad/=smpl_ad.shape[0]
+        parad = reorder_mdl_param(0, parad, Ndr_ad)
+        
+
+    par={**parad,**parap,**paras}
+    print_mdl_param_update(par)
+    set_mdl_param(par)
+    log.save_model_param(path_model_param)    
+    
+    
 def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
     #check logs processed
     log = AWS1Log()
@@ -848,6 +1013,7 @@ def solve3DoFModel(path_model_param, path_log, logs, path_result, force=False):
 
     def psinv(U, s, V):
         return np.dot(np.dot(np.transpose(V),np.pad(np.diag(1/s), [(0,V.shape[1]-s.shape[0]),(0,U.shape[0]-s.shape[0])],'constant')),np.transpose(U))
+    
     if(eqstas.shape[0] >= rstas.shape[0]):
         Uas, sas, Vas = np.linalg.svd(eqstas, full_matrices=True)
         if(is_rank_full(sas)):
