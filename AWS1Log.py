@@ -707,7 +707,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     # sampling nsmpl vectors for each log
     for log_time in logs:
         # load all u,v,r,phi,n
-        t,u,v,r,phi,n=ldl.load_u_v_r_phi_n(path_result)
+        t,u,v,r,phi,n=ldl.load_u_v_r_phi_n(path_result+"/"+log_time)
         
         # apply savgol on u,v,r,n
         u=signal.savgol_filter(u, 9, 3, mode="mirror")

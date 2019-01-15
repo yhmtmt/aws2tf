@@ -1756,7 +1756,7 @@ def load_u_v_r_phi_n(path):
     fname_u=header+"u.csv"
     fname_v=header+"v.csv"
     fname_r=header+"r.csv"
-    fname_phi=header+"phi.csv"
+    fname_psi=header+"psi.csv"
     fname_n=header+"n.csv"
     u=np.loadtxt(fname_u, delimiter=',')
     t = u[:][0]
@@ -1765,11 +1765,11 @@ def load_u_v_r_phi_n(path):
     v = u[:][1]
     r=np.loadtxt(fname_r, delimiter=',')
     r = r[:][1]
-    phi=np.loadtxt(fname_phi, delimiter=',')
-    phi = phi[:][1]
+    psi=np.loadtxt(fname_psi, delimiter=',')
+    psi = psi[:][1]
     n=np.loadtxt(fname_n, delimiter=',')
 
-    return t,u,v,r,phi,n
+    return t,u,v,r,psi,n
     
 def saveParun(path, par):
     csvname="parun.csv"
