@@ -814,95 +814,42 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
 
     def psinv(U, s, V):
         return np.dot(np.dot(np.transpose(V),np.pad(np.diag(1/s), [(0,V.shape[1]-s.shape[0]),(0,U.shape[0]-s.shape[0])],'constant')),np.transpose(U))
-            
-    eqxy_as=[]
-    resxy_as=[]
-    for ismpl in range(smpl_as.shape[0]):        
-        eqxy,resxy=get3DoFEqXY(smpl_as[ismpl][0], smpl_as[ismpl][1],
-                            smpl_as[ismpl][2], smpl_as[ismpl][3],
-                            smpl_as[ismpl][4], smpl_as[ismpl][5],
-                            smpl_as[ismpl][6], smpl_as[ismpl][7],
-                            m_as, rx_as, ry_as)
-        eqxy_as.append(eqxy[0])
-        eqxy_as.append(eqxy[1])
-        resxy_as.append(resxy[0])
-        resxy_as.append(resxy[1])
-        
-    eqxy_as = np.array(eqxy_as)
-    resxy_as = np.array(resxy_as)
-    Uas,sas,Vas=np.linalg.svd(eqxy_as, full_matrices=True)
-    if(is_rank_full(sas)):
-        eqxy_as_inv=psinv(Uas,sas,Vas)
-        paras=np.dot(eqxy_as_inv, rsxy_as)
-        Ndr_as=0.0
-        for ismpl in range(smpl_as.shape[0]):
-            Ndr_as+=get3DoFEqN(smpl_as[ismpl][0], smpl_as[ismpl][1],
-                            smpl_as[ismpl][2], smpl_as[ismpl][3],
-                            smpl_as[ismpl][4], smpl_as[ismpl][5],
-                            smpl_as[ismpl][6], smpl_as[ismpl][7],
-                            m_as, rx_as, ry_as, paras)
-        Ndr_as/=smpl_as.shape[0]        
 
-        paras=reorder_mdl_param(2, paras, Ndr_as)
+    def solve(idx, smpl, m, rx, ry):
+        eqxy=[]
+        resxy=[]
+        for ismpl in range(smpl.shape[0]):        
+            eqxy,resxy=get3DoFEqXY(smpl[ismpl][0], smpl[ismpl][1],
+                                   smpl[ismpl][2], smpl[ismpl][3],
+                                   smpl[ismpl][4], smpl[ismpl][5],
+                                   smpl[ismpl][6], smpl[ismpl][7],
+                                   m, rx, ry)
+            eqxy.append(eqxy[0])
+            eqxy.append(eqxy[1])
+            resxy.append(resxy[0])
+            resxy.append(resxy[1])
         
-    eqxy_ap=[]
-    resxy_ap=[]
-    for ismpl in range(smpl_ap.shape[0]):
-        eqxy,resxy=get3DoFEqXY(smpl_ap[ismpl][0], smpl_ap[ismpl][1],
-                            smpl_ap[ismpl][2], smpl_ap[ismpl][3],
-                            smpl_ap[ismpl][4], smpl_ap[ismpl][5],
-                            smpl_ap[ismpl][6], smpl_ap[ismpl][7],
-                               m_ap, rx_ap, ry_ap)
-        eqxy_ap.append(eqxy[0])
-        eqxy_ap.append(eqxy[1])
-        resxy_ap.append(resxy[0])
-        resxy_ap.append(resxy[1])
-    eqxy_ap = np.array(eqxy_ap)
-    resxy_ap = np.array(resxy_ap)
-    
-    Uap,sap,Vap=np.linalg.svd(eqxy_ap, full_matrices=True)
-    if(is_rank_full(sap)):
-        eqxy_ap_inv=psinv(Uap,sap,Vap)
-        parap=np.dot(eqxy_ap_inv, rsxy_ap)
-        Ndr_ap=0.0
-        for ismpl in range(smpl_ap.shape[0]):
-            Ndr_ap+=get3DoFEqN(smpl_ap[ismpl][0], smpl_ap[ismpl][1],
-                            smpl_ap[ismpl][2], smpl_ap[ismpl][3],
-                            smpl_ap[ismpl][4], smpl_ap[ismpl][5],
-                            smpl_ap[ismpl][6], smpl_ap[ismpl][7],
-                            m_ap, rx_ap, ry_ap, parap)
-        Ndr_ap/=smpl_ap.shape[0]
-        parap = reorder_mdl_param(1, parap, Ndr_ap)
-        
-    eqxy_ad=[]
-    resxy_ad=[]    
-    for ismpl in range(smpl_ad.shape[0]):
-        eqxy,resxy=get3DoFEqXY(smpl_ad[ismpl][0], smpl_ad[ismpl][1],
-                            smpl_ad[ismpl][2], smpl_ad[ismpl][3],
-                            smpl_ad[ismpl][4], smpl_ad[ismpl][5],
-                            smpl_ad[ismpl][6], smpl_ad[ismpl][7],
-                            m_ad, rx_ad, ry_ad)
-        eqxy_ad.append(eqxy[0])
-        eqxy_ad.append(eqxy[1])
-        resxy_ad.append(resxy[0])
-        resxy_ad.append(resxy[1])
-    eqxy_ad = np.array(eqxy_ad)
-    resxy_ad = np.array(resxy_ad)
+        eqxy = np.array(eqxy)
+        resxy = np.array(resxy)
+        U,s,V=np.linalg.svd(eqxy, full_matrices=True)
+        if(is_rank_full(s)):
+            eqxy_inv=psinv(U,s,V)
+            par=np.dot(eqxy_inv, rsxy)
+            Ndr=0.0
+            for ismpl in range(smpl.shape[0]):
+                Ndr_as+=get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
+                                   smpl[ismpl][2], smpl[ismpl][3],
+                                   smpl[ismpl][4], smpl[ismpl][5],
+                                   smpl[ismpl][6], smpl[ismpl][7],
+                                   m, rx, ry, par)
+            Ndr/=smpl.shape[0]        
 
-    Uad,sad,Vad=np.linalg.svd(eqxy_ad, full_matrices=True)
-    if(is_rank_full(sad)):
-        eqxy_ad_inv=psinv(Uad,sad,Vad)
-        parad=np.dot(eqxy_ad_inv, rsxy_ad)
-        Ndr_ad=0.0
-        for ismpl in range(smpl_ad.shape[0]):
-            Ndr_ad+=get3DoFEqN(smpl_ad[ismpl][0], smpl_ad[ismpl][1],
-                            smpl_ad[ismpl][2], smpl_ad[ismpl][3],
-                            smpl_ad[ismpl][4], smpl_ad[ismpl][5],
-                            smpl_ad[ismpl][6], smpl_ad[ismpl][7],
-                            m_ad, rx_ad, ry_ad, parad)
-        Ndr_ad/=smpl_ad.shape[0]
-        parad = reorder_mdl_param(0, parad, Ndr_ad)
-        
+        par=reorder_mdl_param(idx, par, Ndr)
+        return par
+
+    paras=solve(2, smpl_as, m_as, rx_as, ry_as)
+    parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
+    parad=solve(0, smpl_ad, m_ad, rx_ad, ry_ad)    
 
     par={**parad,**parap,**paras}
     print_mdl_param_update(par)
