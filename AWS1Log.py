@@ -689,18 +689,15 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     # 0 < u < uthpd ahead displacement (mode 0)
     # uthpd < u ahead plane (mode 1)
     uthpd = opt.cu(parun)    
-    if u < 0:
-        m_as = log.mdl_params["m2"]
-        rx_as = log.mdl_params["xr2"]
-        ry_as = log.mdl_params["yr2"]
-    elif u < uthpd:
-        m_ad = log.mdl_params["m0"]
-        rx_ad = log.mdl_params["xr0"]
-        ry_ad = log.mdl_params["yr0"]             
-    else:             
-        m_ap = log.mdl_params["m1"]
-        rx_ap = log.mdl_params["xr1"]
-        ry_ap = log.mdl_params["yr1"]
+    m_as = log.mdl_params["m2"]
+    rx_as = log.mdl_params["xr2"]
+    ry_as = log.mdl_params["yr2"]
+    m_ad = log.mdl_params["m0"]
+    rx_ad = log.mdl_params["xr0"]
+    ry_ad = log.mdl_params["yr0"]             
+    m_ap = log.mdl_params["m1"]
+    rx_ap = log.mdl_params["xr1"]
+    ry_ap = log.mdl_params["yr1"]
 
     nsmpl=32
     smpl_ad=None
