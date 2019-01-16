@@ -642,16 +642,19 @@ class AWS1Log:
 
         terr = ldl.getErrorAtt(tstatt, lstatt)
         
-        rx,ry=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
-        ldl.plotDataRelation(path, "", "meng", "rpm", str_cstat[0], str_engr[0],
-                             rx, ry)
+        rxfup,rxfdown,rxbup,rxbdown,ryfup,ryfdown,rybup,rybdown=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
+        ldl.plotengrev(path, str_cstat[0], str_engr[0],
+                       rxfup,rxfdown,rxbup,rxbdown,
+                       ryfup,ryfdown,rybup,rybdown)                       
+#        ldl.plotDataRelation(path, "", "meng", "rpm", str_cstat[0], str_engr[0],
+#                             rx, ry)
        
         rx,ry=ldl.getRelFieldSogCog(ts,te,tstvel,lstvel,tctrlst,lctrlst, terr)
         ldl.plotDataRelation(path, "", par_stvel[1], par_stvel[0], str_stvel[1],
                              str_stvel[0], rx, ry)
                
         rx,ry=ldl.getRelun(ts,te,tmdl,lmdl,terr)
-        ldl.plotun(path, str_model_state[6], str_model_state[0], rx, ry)
+        ldl.plotun(path, str_model_state[6], str_model_state[9], rx, ry)
                
         rx,ry,rz=ldl.getRelundu(ts, te, tmdl, lmdl, terr)
         ldl.plotundu(path, par_model_state[6], par_model_state[9], "du",

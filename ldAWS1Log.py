@@ -1265,14 +1265,49 @@ def getListAndTime(par, data):
     return l,t
 
 def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
+    # distinguish four state
+    # foward(>152), up, down
+    # backword(<102), up, down    
     # meng/rpm, 100 < rud < 154
+    
+    meng=lctrlst[0]
+    dir=np.zeros(shape=meng.shape,dtype='int8')
+    meng_prev=meng[0]
+    dir[0]=0
+    for i in range(1, meng.shape[0]):
+        if (meng_prev < meng[i]):
+            dir[i]=1
+        elif (meng_prev > meng[i]):
+            dir[i]=-1
+        else:
+            dir[i]=dir[i-1]
+        meng_prev = meng[i]
+        
+    tup = findInRangeTimeRanges(tctrlst, dir, 1, 1)
+    tdown = findInRangeTimeRanges(tctrlst, dir, -1, -1)
+    tf = findInRangeTimeRanges(tctrlst, meng, 255, 152)
+    tb = findInRangeTimeRanges(tctrlst, meng, 102, 0)
+            
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
-    trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=10.0, emgn=0.0, th=1.0)
+    trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=20.0, emgn=0.0, th=1.0)
+    
     trng = intersectTimeRanges(trrud, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
     trng = intersectTimeRanges(trng, terr)
-    rx,ry = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trng)
-    return rx,ry
+    trngf = intersectTimeRanges(trng, tf)
+    trngb = intersectTimeRanges(trng, tb)
+    trngfup = intersectTimeRanges(trngf, tup)
+    trngfdown = intersectTimeRanges(trngf, tdown)
+    trngbup = intersectTimeRanges(trngb, tup)
+    trngbdown = intersectTimeRanges(trngb, tdown)
+    
+    rxfup,ryfup = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngfup)
+    rxfdown,ryfdown = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngfdown)
+    
+    rxbup,rybup = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngbup)
+    rxbdown,rybdown = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngbdown)
+
+    return rxfup,rxfdown,rxbup,rxbdown,ryfup,ryfdown,rybup,rybdown 
 
 
 def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
@@ -1705,6 +1740,56 @@ def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
     rel=np.c_[rx,ry]
     np.savetxt(path+"/"+csvname, rel, delimiter=',')
 
+def plotengrev(path, streng, strrev,
+               engfup,engfdown,engbup,engbdown,
+               revfup,revfdown,revbup,revbdown):
+    figname="mengrevf.png"
+    if(engfup.shape[0] > 0):
+        xmin=engfup.min()
+        xmax=engfup.max()
+        ymin=revfup.min()
+        ymax=revfup.max()
+        
+    if(engfdown.shape[0] > 0):
+        xmin=min(xmin,engfdown.min())
+        xmax=max(xmax,engfdown.max())
+        ymin=min(ymin,revfdown.min())
+        ymax=max(ymax,revfdown.max())
+
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    plt.scatter(engfup, revfup, c='red')
+    plt.scatter(engfdown, revfdown, c='blue')
+    plt.xlabel(streng[0]+" ["+streng[1]+"]")
+    plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
+    plt.savefig(path+"/"+figname)
+    plt.clf()
+
+    figname="mengrevb.png"
+    if(engbup.shape[0] > 0):
+        xmin=engbup.min()
+        xmax=engbup.max()
+        ymin=revbup.min()
+        ymax=revbup.max()
+        
+    if(engbdown.shape[0] > 0):
+        xmin=min(xmin,engbdown.min())
+        xmax=max(xmax,engbdown.max())
+        ymin=min(ymin,revbdown.min())
+        ymax=max(ymax,revbdown.max())
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+        
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    plt.scatter(engbup, revbup, c='red')
+    plt.scatter(engbdown, revbdown, c='blue')
+    plt.xlabel(streng[0]+" ["+streng[1]+"]")
+    plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
+    plt.savefig(path+"/"+figname)
+    plt.clf()
+    
+
 def plotun(path, strx, stry, rx, ry):
     # first remove ry=0 points
     _rx=[]
@@ -1759,14 +1844,14 @@ def load_u_v_r_phi_n(path):
     fname_psi=header+"psi.csv"
     fname_n=header+"n.csv"
     u=np.loadtxt(fname_u, delimiter=',')
-    t = u[:][0]
-    u = u[:][1]
+    t = u[:,0]
+    u = u[:,1]
     v=np.loadtxt(fname_v, delimiter=',')
-    v = u[:][1]
+    v = u[:,1]
     r=np.loadtxt(fname_r, delimiter=',')
-    r = r[:][1]
+    r = r[:,1]
     psi=np.loadtxt(fname_psi, delimiter=',')
-    psi = psi[:][1]
+    psi = psi[:,1]
     n=np.loadtxt(fname_n, delimiter=',')
 
     return t,u,v,r,psi,n
