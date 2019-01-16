@@ -1766,6 +1766,8 @@ def plotengrev(path, streng, strrev,
     plt.clf()
 
     figname="mengrevb.png"
+    xmin=ymin=sys.float_info.max
+    xmax=ymax=-sys.float_info.max
     if(engbup.shape[0] > 0):
         xmin=engbup.min()
         xmax=engbup.max()
