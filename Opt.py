@@ -4,6 +4,23 @@ import scipy.optimize
 import sys
 import matplotlib.pyplot as plt
 
+############## model for eng/rev relationship ################
+def funcengrevf(par, eng):
+    # parameters
+    # r0,rp,rf,e0d,e,epd,ep,ef
+    # r0 : idling rev
+    # rp : planing rev
+    # rf : final rev
+    # e0d: idling ctrl (down mode)
+    # e0 : idling ctrl (up mode)
+    # epd: planing ctrl (down mode)
+    # ep : planing ctrl (up mode)
+    # ef : final ctrl
+    
+    
+
+
+
 ############## model for sog/rpm relationship ################
 # u->n function
 def funcun(par, u):
@@ -31,6 +48,7 @@ def funcun(par, u):
         n = par[1] * u
     else:
         n = par[2] * u + par[3]
+        
     return n
 
 def cu(par):
