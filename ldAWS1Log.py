@@ -1779,8 +1779,8 @@ def plotengrev(path, streng, strrev,
     plt.scatter(engfdown, revfdown, c='blue')
     if (is_fitf):
         x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
-        yu = np.array([opt.funcengrev(parf, float(x[i]), is_up=True) for i in range(int(xmin),int(xmax)+1)])
-        yd = np.array([opt.funcengrev(parf, float(x[i]), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+        yu = np.array([opt.funcengrevf(parf, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+        yd = np.array([opt.funcengrevf(parf, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
         plt.plot(x,yu, label="fit up", color='r', linewidth=3)
         plt.plot(x,yd, label="fit down", color='b', linewidth=3)
         
@@ -1827,8 +1827,8 @@ def plotengrev(path, streng, strrev,
     plt.scatter(engbdown, revbdown, c='blue')
     if (is_fitb):
         x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
-        yu = np.array([opt.funcengrev(parb, float(x[i]), is_up=True) for i in range(int(xmin),int(xmax)+1)])
-        yd = np.array([opt.funcengrev(parb, float(x[i]), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+        yu = np.array([opt.funcengrevb(parb, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+        yd = np.array([opt.funcengrevb(parb, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
         plt.plot(x,yu, label="fit up", color='r', linewidth=3)
         plt.plot(x,yd, label="fit down", color='b', linewidth=3)
     
