@@ -5,9 +5,8 @@ import sys
 import matplotlib.pyplot as plt
 
 ############## model for eng/rev relationship ################
-def funcengrevf(par, eng):
+def funcengrevf(par, eng, is_up=True):
     # parameters
-    # r0,rp,rf,e0d,e,epd,ep,ef
     # r0 : idling rev
     # rp : planing rev
     # rf : final rev
@@ -16,10 +15,61 @@ def funcengrevf(par, eng):
     # epd: planing ctrl (down mode)
     # ep : planing ctrl (up mode)
     # ef : final ctrl
+    # dd0,dd1,dd2, dp0,dp1,dp2 : quadratic function in down mode
+    # ud0,ud1,ud2, up0,up1,up2 : quadratic function in up mode
+    r0 = par[0]
+    rp = par[1]
+    rf = par[2]
+    e0d = par[3]
+    e0 = par[4]
+    epd = par[5]
+    ep = par[6]
+    ef = par[7]
+    dd0 = par[8]
+    dd1 = par[9]
+    dd2 = par[10]
+    dp0 = par[11]
+    dp1 = par[12]
+    dp2 = par[13]
+    ud0 = par[14]
+    ud1 = par[15]
+    ud2 = par[16]
+    up0 = par[17]
+    up1 = par[18]
+    up2 = par[19]
     
+    if eng < e0d:
+        return r0
+    if eng >= ef:
+        return rf
+
+    eng2 = eng * eng
     
+    if is_up:
+        if eng < ep:
+            return dd0 * eng2 + dd1 * eng + dd2
+        else:
+            return dp0 * eng2 + dp1 * eng + dp2
+    else:
+        if eng < epd:
+            return ud0 * eng2 + ud1 * eng + ud2
+        else:
+            return up0 * eng2 + up1 * eng + up2
 
+    return 0
 
+def resengrevf(par, eng, rev):
+    rev_p = np.array([funcengrevf(par, eng[i]) for i in range(n.shape[0])])
+    res = n_p - rev
+    return res
+
+def fitengrevf(eng, rev, par0=[700,3000,5500,
+                               180,185,
+                               192.5,195,
+                               210,
+                               0,184,-32420,0,143,-24500,
+                               0,230,-41850,0,167,-29500]):
+    return scipy.optimize.least_squares(resengrevf, par0, arg(eng, rev))
 
 ############## model for sog/rpm relationship ################
 # u->n function
