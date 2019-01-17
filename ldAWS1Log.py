@@ -1743,6 +1743,9 @@ def plotDataRelation(path, name, parx, pary, strx, stry, rx, ry, density=False):
 def plotengrev(path, streng, strrev,
                engfup,engfdown,engbup,engbdown,
                revfup,revfdown,revbup,revbdown):
+    parf=None
+    parb=None
+    
     figname="mengrevf.png"
     if(engfup.shape[0] > 0):
         xmin=engfup.min()
@@ -1755,6 +1758,8 @@ def plotengrev(path, streng, strrev,
         xmax=max(xmax,engfdown.max())
         ymin=min(ymin,revfdown.min())
         ymax=max(ymax,revfdown.max())
+
+    is_fitf = False
     if(engfup.shape[0] > 0 and engfdown.shape[0] > 0):
         diru=np.full(engfup.shape, 1)
         dird=np.full(engfdown.shape, -1)
@@ -1762,15 +1767,23 @@ def plotengrev(path, streng, strrev,
         tmp1=np.concatenate((engfdown,dird),axis=1)
         eng=np.concatenate((tmp0,tmp1),axis=0)
         rev=np.concatenate(revfup,revfdown, axis=0)
-        ropt=ldl.fitengrev(eng, rev)
+        ropt=ldl.fitengrevf(eng, rev)
         parf=ropt.x
         print("meng-rev ahead optimized parameters:")
         print(parf)
-        
+        is_fitf = True    
+    
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
     plt.scatter(engfup, revfup, c='red')
     plt.scatter(engfdown, revfdown, c='blue')
+    if (is_fitf):
+        x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
+        yu = np.array([opt.funcengrev(parf, float(x[i]), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+        yd = np.array([opt.funcengrev(parf, float(x[i]), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+        plt.plot(x,yu, label="fit up", color='r', linewidth=3)
+        plt.plot(x,yd, label="fit down", color='b', linewidth=3)
+        
     plt.xlabel(streng[0]+" ["+streng[1]+"]")
     plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
     plt.savefig(path+"/"+figname)
@@ -1790,6 +1803,21 @@ def plotengrev(path, streng, strrev,
         xmax=max(xmax,engbdown.max())
         ymin=min(ymin,revbdown.min())
         ymax=max(ymax,revbdown.max())
+
+    is_fitb = False
+    if (engbup.shape[0] > 0 and engbdown.shape[0] > 0):
+        diru=np.full(engbup.shape, 1)
+        dird=np.full(engbdown.shape, -1)
+        tmp0=np.concatenate((engbup,diru),axis=1)
+        tmp1=np.concatenate((engbdown,dird),axis=1)
+        eng=np.concatenate((tmp0,tmp1),axis=0)
+        rev=np.concatenate(revbup,revbdown, axis=0)
+        ropt=ldl.fitengrevb(eng, rev)
+        parb=ropt.x
+        print("meng-rev astern optimized parameters:")
+        print(parb)
+        is_fitb = True
+    
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
         
@@ -1797,6 +1825,13 @@ def plotengrev(path, streng, strrev,
     plt.ylim(ymin,ymax)
     plt.scatter(engbup, revbup, c='red')
     plt.scatter(engbdown, revbdown, c='blue')
+    if (is_fitb):
+        x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
+        yu = np.array([opt.funcengrev(parb, float(x[i]), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+        yd = np.array([opt.funcengrev(parb, float(x[i]), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+        plt.plot(x,yu, label="fit up", color='r', linewidth=3)
+        plt.plot(x,yd, label="fit down", color='b', linewidth=3)
+    
     plt.xlabel(streng[0]+" ["+streng[1]+"]")
     plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
     plt.savefig(path+"/"+figname)

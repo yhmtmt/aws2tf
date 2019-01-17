@@ -46,10 +46,13 @@ def funcengrevf(par, eng, is_up=True):
     eng2 = eng * eng
     
     if is_up:
-        if eng < ep:
-            return dd0 * eng2 + dd1 * eng + dd2
+        if eng < e0:
+            return r0
         else:
-            return dp0 * eng2 + dp1 * eng + dp2
+            if eng < ep:
+                return dd0 * eng2 + dd1 * eng + dd2
+            else:
+                return dp0 * eng2 + dp1 * eng + dp2
     else:
         if eng < epd:
             return ud0 * eng2 + ud1 * eng + ud2
@@ -58,11 +61,57 @@ def funcengrevf(par, eng, is_up=True):
 
     return 0
 
+def funcengrevb(par, eng, is_up=True):
+    #parameters
+    # r0 : idling rev
+    # rp : planing rev
+    # rf : final rev
+    # e0d : idling ctrl(down mode)
+    # e0 : idling ctrl(up mode)
+    # ef : final ctrl
+    # d0, d1, d2 : quadratic function in down mode
+    # u0, u1, u2 : quadratic function in up mode
+    r0=par[0]
+    rp=par[1]
+    rf=par[2]
+    e0d=par[3]
+    e0=par[4]
+    ef=par[5]
+    d0=par[6]
+    d1=par[7]
+    d2=par[8]
+    u0=par[9]
+    u1=par[10]
+    u2=par[11]
+    
+    if eng > e0:
+        return r0
+    if eng < ef:
+        return rf
+
+    eng2 = eng * eng
+    
+    if is_up:
+        return u0 * eng2 + u1 * eng + u2
+    else:
+        if eng < e0d:
+            return r0
+        else:
+            return d0 * eng2 + d1 * eng + d2
+    return 0
+    
+    
 def resengrevf(par, eng, rev):
     rev_p = np.array([funcengrevf(par, eng[i][1], eng[i][0] > 0) for i in range(rev.shape[0])])
     res = rev_p - rev
     
     return res
+
+def resengrevb(par, eng, rev):
+    rev_p = np.array([funcengrevb(par, eng[i][1], eng[i][0] > 0) for i in range(rev.shape[0])])
+    res = rev_p - rev
+    return res
+
 
 def fitengrevf(eng, rev,
                par0=[700,3000,5500,
@@ -71,9 +120,21 @@ def fitengrevf(eng, rev,
                      210,
                      0,184,-32420,0,143,-24500,
                      0,230,-41850,0,167,-29500]):
-    
+    '''
+    eng: (eng_ctrl_val,up_or_down) array
+    rev: (rpm) array
+    '''
     return scipy.optimize.least_squares(resengrevf, par0,
                                         arg(eng, rev))
+
+def fitengrevb(eng, rev,par0=[]):
+    '''
+    eng: (eng_ctrl_val,up_or_down) array
+    rev: (rpm) array
+    '''
+    return scipy.optimize.least_squares(resengrevb, par0,
+                                        arg(eng, rev))
+               
 
 ############## model for sog/rpm relationship ################
 # u->n function
