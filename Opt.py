@@ -64,7 +64,6 @@ def funcengrevf(par, eng, is_up=True):
 def funcengrevb(par, eng, is_up=True):
     #parameters
     # r0 : idling rev
-    # rp : planing rev
     # rf : final rev
     # e0d : idling ctrl(down mode)
     # e0 : idling ctrl(up mode)
@@ -72,17 +71,16 @@ def funcengrevb(par, eng, is_up=True):
     # d0, d1, d2 : quadratic function in down mode
     # u0, u1, u2 : quadratic function in up mode
     r0=par[0]
-    rp=par[1]
-    rf=par[2]
-    e0d=par[3]
-    e0=par[4]
-    ef=par[5]
-    d0=par[6]
-    d1=par[7]
-    d2=par[8]
-    u0=par[9]
-    u1=par[10]
-    u2=par[11]
+    rf=par[1]
+    e0d=par[2]
+    e0=par[3]
+    ef=par[4]
+    d0=par[5]
+    d1=par[6]
+    d2=par[7]
+    u0=par[8]
+    u1=par[9]
+    u2=par[10]
     
     if eng > e0:
         return r0
@@ -125,16 +123,16 @@ def fitengrevf(eng, rev,
     rev: (rpm) array
     '''
     return scipy.optimize.least_squares(resengrevf, par0,
-                                        arg(eng, rev))
+                                        args=(eng, rev))
 
-def fitengrevb(eng, rev,par0=[]):
+def fitengrevb(eng, rev,par0=[700,3500,93,90,89]):
     '''
     eng: (eng_ctrl_val,up_or_down) array
     rev: (rpm) array
     '''
     return scipy.optimize.least_squares(resengrevb, par0,
-                                        arg(eng, rev))
-               
+                                        args=(eng, rev))
+
 
 ############## model for sog/rpm relationship ################
 # u->n function
