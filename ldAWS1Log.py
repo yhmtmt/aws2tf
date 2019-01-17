@@ -1763,11 +1763,11 @@ def plotengrev(path, streng, strrev,
     if(engfup.shape[0] > 0 and engfdown.shape[0] > 0):
         diru=np.full(engfup.shape, 1)
         dird=np.full(engfdown.shape, -1)
-        tmp0=np.concatenate((engfup,diru),axis=1)
-        tmp1=np.concatenate((engfdown,dird),axis=1)
+        tmp0=np.stack((engfup,diru),axis=1)
+        tmp1=np.stack((engfdown,dird),axis=1)
         eng=np.concatenate((tmp0,tmp1),axis=0)
-        rev=np.concatenate(revfup,revfdown, axis=0)
-        ropt=ldl.fitengrevf(eng, rev)
+        rev=np.concatenate((revfup,revfdown), axis=0)
+        ropt=opt.fitengrevf(eng, rev)
         parf=ropt.x
         print("meng-rev ahead optimized parameters:")
         print(parf)
@@ -1808,11 +1808,11 @@ def plotengrev(path, streng, strrev,
     if (engbup.shape[0] > 0 and engbdown.shape[0] > 0):
         diru=np.full(engbup.shape, 1)
         dird=np.full(engbdown.shape, -1)
-        tmp0=np.concatenate((engbup,diru),axis=1)
-        tmp1=np.concatenate((engbdown,dird),axis=1)
+        tmp0=np.stack((engbup,diru),axis=1)
+        tmp1=np.stack((engbdown,dird),axis=1)
         eng=np.concatenate((tmp0,tmp1),axis=0)
-        rev=np.concatenate(revbup,revbdown, axis=0)
-        ropt=ldl.fitengrevb(eng, rev)
+        rev=np.concatenate((revbup,revbdown), axis=0)
+        ropt=opt.fitengrevb(eng, rev)
         parb=ropt.x
         print("meng-rev astern optimized parameters:")
         print(parb)
