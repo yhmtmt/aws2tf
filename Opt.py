@@ -59,17 +59,21 @@ def funcengrevf(par, eng, is_up=True):
     return 0
 
 def resengrevf(par, eng, rev):
-    rev_p = np.array([funcengrevf(par, eng[i]) for i in range(n.shape[0])])
-    res = n_p - rev
+    rev_p = np.array([funcengrevf(par, eng[i][1], eng[i][0] > 0) for i in range(rev.shape[0])])
+    res = rev_p - rev
+    
     return res
 
-def fitengrevf(eng, rev, par0=[700,3000,5500,
-                               180,185,
-                               192.5,195,
-                               210,
-                               0,184,-32420,0,143,-24500,
-                               0,230,-41850,0,167,-29500]):
-    return scipy.optimize.least_squares(resengrevf, par0, arg(eng, rev))
+def fitengrevf(eng, rev,
+               par0=[700,3000,5500,
+                     180,185,
+                     192.5,195,
+                     210,
+                     0,184,-32420,0,143,-24500,
+                     0,230,-41850,0,167,-29500]):
+    
+    return scipy.optimize.least_squares(resengrevf, par0,
+                                        arg(eng, rev))
 
 ############## model for sog/rpm relationship ################
 # u->n function

@@ -1755,7 +1755,18 @@ def plotengrev(path, streng, strrev,
         xmax=max(xmax,engfdown.max())
         ymin=min(ymin,revfdown.min())
         ymax=max(ymax,revfdown.max())
-
+    if(engfup.shape[0] > 0 and engfdown.shape[0] > 0):
+        diru=np.full(engfup.shape, 1)
+        dird=np.full(engfdown.shape, -1)
+        tmp0=np.concatenate((engfup,diru),axis=1)
+        tmp1=np.concatenate((engfdown,dird),axis=1)
+        eng=np.concatenate((tmp0,tmp1),axis=0)
+        rev=np.concatenate(revfup,revfdown, axis=0)
+        ropt=ldl.fitengrev(eng, rev)
+        parf=ropt.x
+        print("meng-rev ahead optimized parameters:")
+        print(parf)
+        
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
     plt.scatter(engfup, revfup, c='red')
