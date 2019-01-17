@@ -49,15 +49,15 @@ def funcengrevf(par, eng, is_up=True):
         if eng < e0:
             return r0
         else:
-            if eng < ep:
-                return dd0 * eng2 + dd1 * eng + dd2
+            if eng < epd:
+                return ud0 * eng2 + ud1 * eng + ud2
             else:
-                return dp0 * eng2 + dp1 * eng + dp2
+                return up0 * eng2 + up1 * eng + up2
     else:
-        if eng < epd:
-            return ud0 * eng2 + ud1 * eng + ud2
+        if eng < ep:
+            return dd0 * eng2 + dd1 * eng + dd2
         else:
-            return up0 * eng2 + up1 * eng + up2
+            return dp0 * eng2 + dp1 * eng + dp2
 
     return 0
 
@@ -100,13 +100,13 @@ def funcengrevb(par, eng, is_up=True):
     
     
 def resengrevf(par, eng, rev):
-    rev_p = np.array([funcengrevf(par, eng[i][1], eng[i][0] > 0) for i in range(rev.shape[0])])
+    rev_p = np.array([funcengrevf(par, eng[i][0], eng[i][1] > 0) for i in range(rev.shape[0])])
     res = rev_p - rev
     
     return res
 
 def resengrevb(par, eng, rev):
-    rev_p = np.array([funcengrevb(par, eng[i][1], eng[i][0] > 0) for i in range(rev.shape[0])])
+    rev_p = np.array([funcengrevb(par, eng[i][0], eng[i][1] > 0) for i in range(rev.shape[0])])
     res = rev_p - rev
     return res
 
@@ -125,7 +125,7 @@ def fitengrevf(eng, rev,
     return scipy.optimize.least_squares(resengrevf, par0,
                                         args=(eng, rev))
 
-def fitengrevb(eng, rev,par0=[700,3500,93,90,89]):
+def fitengrevb(eng, rev,par0=[700,3500,93,90,89,0,-700,252700,0,-2800,252700]):
     '''
     eng: (eng_ctrl_val,up_or_down) array
     rev: (rpm) array
@@ -234,6 +234,22 @@ if __name__ == '__main__':
     import pdb
     pdb.set_trace()
 
+    par=[700,3000,5500,
+         180,185,
+         192.5,195,
+         210,
+         0,184,-32420,0,143,-24500,
+         0,230,-41850,0,167,-29500]
+    x=[i for i in range(175,210)]
+    y=[funcengrevf(par,float(i),True) for i in range(175,210)]
+    yd=[funcengrevf(par,float(i),False) for i in range(175,210)]
+    plt.plot(x, y, label="up", color='r', linewidth=3)
+    plt.plot(x, yd, label="down", color='b', linewidth=3)
+    plt.xlabel("u(m/s)")
+    plt.ylabel("Rev(RPM)")
+    plt.grid(True)
+    plt.show()
+    
     #load sog/rpm data
     data=np.loadtxt("/home/ubuntu/matumoto/aws/proc/sogrpm/un.csv", delimiter=",")
     data=np.transpose(data)
