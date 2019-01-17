@@ -1882,7 +1882,7 @@ def saveRelun(path, u, n):
 def loadRelun(path):
     csvname="un.csv"
     rel = np.loadtxt(path+"/"+csvname, delimiter=',')
-    return rel[:][0],rel[:][1]
+    return rel[:,0],rel[:,1]
 
 def load_u_v_r_phi_n(path):
     header=path+"/"+"model_state"
