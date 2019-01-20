@@ -642,7 +642,7 @@ class AWS1Log:
 
         terr = ldl.getErrorAtt(tstatt, lstatt)
         
-        rxfup,rxfdown,rxbup,rxbdown,ryfup,ryfdown,rybup,rybdown=ldl.getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr)
+        rxfup,rxfdown,rxbup,rxbdown,ryfup,ryfdown,rybup,rybdown=ldl.getRelMengRpm(ts,te, tuiinst, luiinst, tengr, lengr, terr)
         ldl.plotengrev(path, str_cstat[0], str_engr[0],
                        rxfup,rxfdown,rxbup,rxbdown,
                        ryfup,ryfdown,rybup,rybdown)                       

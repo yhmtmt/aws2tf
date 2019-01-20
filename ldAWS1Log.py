@@ -1264,13 +1264,13 @@ def getListAndTime(par, data):
     t = data['t']
     return l,t
 
-def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
+def getRelMengRpm(ts,te, tcinst, lcinst, tengr, lengr, terr=[[]]):
     # distinguish four state
     # foward(>152), up, down
     # backword(<102), up, down    
     # meng/rpm, 100 < rud < 154
     
-    meng=lctrlst[0]
+    meng=lcinst[1]
     dir=np.zeros(shape=meng.shape,dtype='int8')
     meng_prev=meng[0]
     dir[0]=0
@@ -1283,13 +1283,13 @@ def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
             dir[i]=dir[i-1]
         meng_prev = meng[i]
         
-    tup = findInRangeTimeRanges(tctrlst, dir, 1, 1)
-    tdown = findInRangeTimeRanges(tctrlst, dir, -1, -1)
-    tf = findInRangeTimeRanges(tctrlst, meng, 255, 152)
-    tb = findInRangeTimeRanges(tctrlst, meng, 102, 0)
+    tup = findInRangeTimeRanges(tcinst, dir, 1, 1)
+    tdown = findInRangeTimeRanges(tcinst, dir, -1, -1)
+    tf = findInRangeTimeRanges(tcinst, meng, 255, 152)
+    tb = findInRangeTimeRanges(tcinst, meng, 102, 0)
             
-    trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
-    trmeng = findStableTimeRanges(tctrlst, lctrlst[0], smgn=20.0, emgn=0.0, th=1.0)
+    trrud = findInRangeTimeRanges(tcinst, lcinst[3], 154, 100)
+    trmeng = findStableTimeRanges(tcinst, lcinst[1], smgn=20.0, emgn=0.0, th=1.0)
     
     trng = intersectTimeRanges(trrud, trmeng)
     trng = intersectTimeRanges(trng, [[ts,te]])
@@ -1301,16 +1301,16 @@ def getRelMengRpm(ts,te, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
     trngbup = intersectTimeRanges(trngb, tup)
     trngbdown = intersectTimeRanges(trngb, tdown)
     
-    rxfup,ryfup = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngfup)
-    rxfdown,ryfdown = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngfdown)
+    rxfup,ryfup = relateTimeRangeVecs(tcinst, tengr, lcinst[1], lengr[0], trngfup)
+    rxfdown,ryfdown = relateTimeRangeVecs(tcinst, tengr, lcinst[1], lengr[0], trngfdown)
     
-    rxbup,rybup = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngbup)
-    rxbdown,rybdown = relateTimeRangeVecs(tctrlst, tengr, lctrlst[0], lengr[0], trngbdown)
+    rxbup,rybup = relateTimeRangeVecs(tcinst, tengr, lcinst[1], lengr[0], trngbup)
+    rxbdown,rybdown = relateTimeRangeVecs(tcinst, tengr, lcinst[1], lengr[0], trngbdown)
 
     return rxfup,rxfdown,rxbup,rxbdown,ryfup,ryfdown,rybup,rybdown 
 
 
-def getRelSogRpm(ts,te, tstvel, lstvel, tctrlst, lctrlst, tengr, lengr, terr=[[]]):
+def getRelSogRpm(ts,te, tstvel, lstvel, tcinst, lctrlst, tengr, lengr, terr=[[]]):
     # sog/rpm, -3 < dcog < 3, 100 < rud < 154, 152 < meng < 255
     trcog = findInRangeTimeRanges(tstvel, lstvel[2], 3,-3)
     trrud = findInRangeTimeRanges(tctrlst, lctrlst[2], 154, 100)
@@ -1745,97 +1745,99 @@ def plotengrev(path, streng, strrev,
                revfup,revfdown,revbup,revbdown):
     parf=None
     parb=None
-    
-    figname="mengrevf.png"
-    if(engfup.shape[0] > 0):
-        xmin=engfup.min()
-        xmax=engfup.max()
-        ymin=revfup.min()
-        ymax=revfup.max()
-        
-    if(engfdown.shape[0] > 0):
-        xmin=min(xmin,engfdown.min())
-        xmax=max(xmax,engfdown.max())
-        ymin=min(ymin,revfdown.min())
-        ymax=max(ymax,revfdown.max())
 
-    is_fitf = False
-    if(engfup.shape[0] > 0 and engfdown.shape[0] > 0):
-        diru=np.full(engfup.shape, 1)
-        dird=np.full(engfdown.shape, -1)
-        tmp0=np.stack((engfup,diru),axis=1)
-        tmp1=np.stack((engfdown,dird),axis=1)
-        eng=np.concatenate((tmp0,tmp1),axis=0)
-        rev=np.concatenate((revfup,revfdown), axis=0)
-        ropt=opt.fitengrevf(eng, rev)
-        parf=ropt.x
-        print("meng-rev ahead optimized parameters:")
-        print(parf)
-        is_fitf = True    
-    
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
-    plt.scatter(engfup, revfup, c='red')
-    plt.scatter(engfdown, revfdown, c='blue')
-    if (is_fitf):
-        x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
-        yu = np.array([opt.funcengrevf(parf, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
-        yd = np.array([opt.funcengrevf(parf, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
-        plt.plot(x,yu, label="fit up", color='r', linewidth=3)
-        plt.plot(x,yd, label="fit down", color='b', linewidth=3)
+    if engfup.shape[0] > 0 or engfdown.shape[0] > 0:
+        figname="mengrevf.png"
+        if(engfup.shape[0] > 0):
+            xmin=engfup.min()
+            xmax=engfup.max()
+            ymin=revfup.min()
+            ymax=revfup.max()
         
-    plt.xlabel(streng[0]+" ["+streng[1]+"]")
-    plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
-    plt.savefig(path+"/"+figname)
-    plt.clf()
+        if(engfdown.shape[0] > 0):
+            xmin=min(xmin,engfdown.min())
+            xmax=max(xmax,engfdown.max())
+            ymin=min(ymin,revfdown.min())
+            ymax=max(ymax,revfdown.max())
 
-    figname="mengrevb.png"
-    xmin=ymin=sys.float_info.max
-    xmax=ymax=-sys.float_info.max
-    if(engbup.shape[0] > 0):
-        xmin=engbup.min()
-        xmax=engbup.max()
-        ymin=revbup.min()
-        ymax=revbup.max()
+        is_fitf = False
+        if(engfup.shape[0] > 0 and engfdown.shape[0] > 0):
+            diru=np.full(engfup.shape, 1)
+            dird=np.full(engfdown.shape, -1)
+            tmp0=np.stack((engfup,diru),axis=1)
+            tmp1=np.stack((engfdown,dird),axis=1)
+            eng=np.concatenate((tmp0,tmp1),axis=0)
+            rev=np.concatenate((revfup,revfdown), axis=0)
+            ropt=opt.fitengrevf(eng, rev)
+            parf=ropt.x
+            print("meng-rev ahead optimized parameters:")
+            print(parf)
+            is_fitf = True    
+    
+        plt.xlim(xmin,xmax)
+        plt.ylim(ymin,ymax)
+        plt.scatter(engfup, revfup, c='red')
+        plt.scatter(engfdown, revfdown, c='blue')
+        if (is_fitf):
+            x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
+            yu = np.array([opt.funcengrevf(parf, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+            yd = np.array([opt.funcengrevf(parf, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+            plt.plot(x,yu, label="fit up", color='r', linewidth=3)
+            plt.plot(x,yd, label="fit down", color='b', linewidth=3)
         
-    if(engbdown.shape[0] > 0):
-        xmin=min(xmin,engbdown.min())
-        xmax=max(xmax,engbdown.max())
-        ymin=min(ymin,revbdown.min())
-        ymax=max(ymax,revbdown.max())
+        plt.xlabel(streng[0]+" ["+streng[1]+"]")
+        plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
+        plt.savefig(path+"/"+figname)
+        plt.clf()
 
-    is_fitb = False
-    if (engbup.shape[0] > 0 and engbdown.shape[0] > 0):
-        diru=np.full(engbup.shape, 1)
-        dird=np.full(engbdown.shape, -1)
-        tmp0=np.stack((engbup,diru),axis=1)
-        tmp1=np.stack((engbdown,dird),axis=1)
-        eng=np.concatenate((tmp0,tmp1),axis=0)
-        rev=np.concatenate((revbup,revbdown), axis=0)
-        ropt=opt.fitengrevb(eng, rev)
-        parb=ropt.x
-        print("meng-rev astern optimized parameters:")
-        print(parb)
-        is_fitb = True
-    
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
+    if engbup.shape[0] > 0 or engbdown.shape[0] > 0:
+        figname="mengrevb.png"
+        xmin=ymin=sys.float_info.max
+        xmax=ymax=-sys.float_info.max
+        if(engbup.shape[0] > 0):
+            xmin=engbup.min()
+            xmax=engbup.max()
+            ymin=revbup.min()
+            ymax=revbup.max()
         
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
-    plt.scatter(engbup, revbup, c='red')
-    plt.scatter(engbdown, revbdown, c='blue')
-    if (is_fitb):
-        x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
-        yu = np.array([opt.funcengrevb(parb, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
-        yd = np.array([opt.funcengrevb(parb, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
-        plt.plot(x,yu, label="fit up", color='r', linewidth=3)
-        plt.plot(x,yd, label="fit down", color='b', linewidth=3)
+        if(engbdown.shape[0] > 0):
+            xmin=min(xmin,engbdown.min())
+            xmax=max(xmax,engbdown.max())
+            ymin=min(ymin,revbdown.min())
+            ymax=max(ymax,revbdown.max())
+
+        is_fitb = False
+        if (engbup.shape[0] > 0 and engbdown.shape[0] > 0):
+            diru=np.full(engbup.shape, 1)
+            dird=np.full(engbdown.shape, -1)
+            tmp0=np.stack((engbup,diru),axis=1)
+            tmp1=np.stack((engbdown,dird),axis=1)
+            eng=np.concatenate((tmp0,tmp1),axis=0)
+            rev=np.concatenate((revbup,revbdown), axis=0)
+            ropt=opt.fitengrevb(eng, rev)
+            parb=ropt.x
+            print("meng-rev astern optimized parameters:")
+            print(parb)
+            is_fitb = True
     
-    plt.xlabel(streng[0]+" ["+streng[1]+"]")
-    plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
-    plt.savefig(path+"/"+figname)
-    plt.clf()
+        plt.xlim(xmin,xmax)
+        plt.ylim(ymin,ymax)
+        
+        plt.xlim(xmin,xmax)
+        plt.ylim(ymin,ymax)
+        plt.scatter(engbup, revbup, c='red')
+        plt.scatter(engbdown, revbdown, c='blue')
+        if (is_fitb):
+            x = np.array([float(i) for i in range(int(xmin),int(xmax)+1)])    
+            yu = np.array([opt.funcengrevb(parb, float(i), is_up=True) for i in range(int(xmin),int(xmax)+1)])
+            yd = np.array([opt.funcengrevb(parb, float(i), is_up=False) for i in range(int(xmin),int(xmax)+1)])
+            plt.plot(x,yu, label="fit up", color='r', linewidth=3)
+            plt.plot(x,yd, label="fit down", color='b', linewidth=3)
+    
+        plt.xlabel(streng[0]+" ["+streng[1]+"]")
+        plt.ylabel(strrev[0]+" ["+strrev[1]+"]")
+        plt.savefig(path+"/"+figname)
+        plt.clf()
     
 
 def plotun(path, strx, stry, rx, ry):
