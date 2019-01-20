@@ -5,6 +5,25 @@ import sys
 import matplotlib.pyplot as plt
 
 ############## model for eng/rev relationship ################
+def qeq2pt(x0,y0,x1,y1,c):
+    '''
+    return a,b related to a function f(x)=ax^2+bx+c
+    pass through (x0,y0) and (x1,y1) and given c.
+    '''
+    x0x1=x0*x1
+    x0x1x1=x0x1*x1
+    x0x0x1=x0*x0x1
+    base=1/(x0x1x1-x0x0x1)
+    cx0=x*x0
+    cx0x0=cx0*x0
+    x1cmy0=x1*(c-y0)
+    x1x1cmy0=x1*x1cmy0
+    x0y1=x0*y1
+    x0x0y1=x0*x0y1
+    a=(-cx0+x1cmy0+x0y1)*base
+    b=-(-cx0x0+x1x1cmy0+x0x0y1)*base
+    return a,b
+
 def funcengrevf(par, eng, is_up=True):
     # parameters
     # r0 : idling rev
@@ -25,17 +44,16 @@ def funcengrevf(par, eng, is_up=True):
     epd = par[5]
     ep = par[6]
     ef = par[7]
-    dd0 = par[8]
-    dd1 = par[9]
+    
+    dd0,dd1=qeq2pt(e0d,r0,epd,rp, par[10])
     dd2 = par[10]
-    dp0 = par[11]
-    dp1 = par[12]
+    
+    dp0,dp1=qeq2pt(epd,rp,ef,rf, par[13])    
     dp2 = par[13]
-    ud0 = par[14]
-    ud1 = par[15]
+    
+    ud0,ud1=qeq2pt(e0,r0,ep,rp, par[16])
     ud2 = par[16]
-    up0 = par[17]
-    up1 = par[18]
+    up0,up1=qeq2pt(ep,rp,ef,rf, par[19])
     up2 = par[19]
     
     if eng < e0d:
@@ -75,11 +93,9 @@ def funcengrevb(par, eng, is_up=True):
     e0d=par[2]
     e0=par[3]
     ef=par[4]
-    d0=par[5]
-    d1=par[6]
+    d0,d1=qeq2pt(e0d,r0,ef,rf,par[7])
     d2=par[7]
-    u0=par[8]
-    u1=par[9]
+    u0,u1=qeq2pt(e0,r0,ef,rf,par[10])
     u2=par[10]
     
     if eng > e0:
