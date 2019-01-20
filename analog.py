@@ -91,6 +91,8 @@ if len(op) != 0:
             log.play(ts, te)
     elif op == "opt3dof":
         AWS1Log.solve3DoFModel(path_model_param, path_log, logs, path_result, args.force)
+    elif op == "opt3dofex":
+        AWS1Log.solve3DoFModelEx(path_model_param, path_log, logs, path_result, args.force)
     else:
         print("Unknown Operation %s" % op)
             
