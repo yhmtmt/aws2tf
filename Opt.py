@@ -14,7 +14,7 @@ def qeq2pt(x0,y0,x1,y1,c):
     x0x1x1=x0x1*x1
     x0x0x1=x0*x0x1
     base=1/(x0x1x1-x0x0x1)
-    cx0=x*x0
+    cx0=c*x0
     cx0x0=cx0*x0
     x1cmy0=x1*(c-y0)
     x1x1cmy0=x1*x1cmy0
@@ -45,16 +45,14 @@ def funcengrevf(par, eng, is_up=True):
     ep = par[6]
     ef = par[7]
     
-    dd0,dd1=qeq2pt(e0d,r0,epd,rp, par[10])
-    dd2 = par[10]
-    
-    dp0,dp1=qeq2pt(epd,rp,ef,rf, par[13])    
-    dp2 = par[13]
-    
-    ud0,ud1=qeq2pt(e0,r0,ep,rp, par[16])
-    ud2 = par[16]
-    up0,up1=qeq2pt(ep,rp,ef,rf, par[19])
-    up2 = par[19]
+    dd0,dd1=qeq2pt(e0d,r0,epd,rp, par[8])
+    dd2 = par[8]    
+    dp0,dp1=qeq2pt(epd,rp,ef,rf, par[9])    
+    dp2 = par[9]    
+    ud0,ud1=qeq2pt(e0,r0,ep,rp, par[10])
+    ud2 = par[10]
+    up0,up1=qeq2pt(ep,rp,ef,rf, par[11])
+    up2 = par[11]
     
     if eng < e0d:
         return r0
@@ -93,10 +91,10 @@ def funcengrevb(par, eng, is_up=True):
     e0d=par[2]
     e0=par[3]
     ef=par[4]
-    d0,d1=qeq2pt(e0d,r0,ef,rf,par[7])
-    d2=par[7]
-    u0,u1=qeq2pt(e0,r0,ef,rf,par[10])
-    u2=par[10]
+    d0,d1=qeq2pt(e0d,r0,ef,rf,par[5])
+    d2=par[5]
+    u0,u1=qeq2pt(e0,r0,ef,rf,par[6])
+    u2=par[6]
     
     if eng > e0:
         return r0
@@ -108,7 +106,7 @@ def funcengrevb(par, eng, is_up=True):
     if is_up:
         return u0 * eng2 + u1 * eng + u2
     else:
-        if eng < e0d:
+        if eng > e0d:
             return r0
         else:
             return d0 * eng2 + d1 * eng + d2
@@ -132,8 +130,8 @@ def fitengrevf(eng, rev,
                      180,185,
                      192.5,195,
                      210,
-                     0,184,-32420,0,143,-24500,
-                     0,230,-41850,0,167,-29500]):
+                     0,0,
+                     0,0]):
     '''
     eng: (eng_ctrl_val,up_or_down) array
     rev: (rpm) array
@@ -141,9 +139,10 @@ def fitengrevf(eng, rev,
     return scipy.optimize.least_squares(resengrevf, par0,
                                         args=(eng, rev))
 
-def fitengrevb(eng, rev,par0=[700,3500,93,90,89,0,-700,252700,0,-2800,252700]):
+def fitengrevb(eng, rev,par0=[700,3500,60,65,50,0,0]):
     '''
     eng: (eng_ctrl_val,up_or_down) array
+
     rev: (rpm) array
     '''
     return scipy.optimize.least_squares(resengrevb, par0,
