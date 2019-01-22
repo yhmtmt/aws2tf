@@ -24,6 +24,15 @@ def qeq2pt(x0,y0,x1,y1,c):
     b=-(-cx0x0+x1x1cmy0+x0x0y1)*base
     return a,b
 
+def qeq2pt2(x0,y0,x1,y1,a):
+    x1mx0=x1-x0
+    x0x0=x0*x0
+    x1x1=x1*x1
+    base = 1/(x1-x0)
+    b=(a * (x0x0 - x1x1) - y0 + y1) * base
+    c=-(-a*x0*x1x1 + x1*(a*x0x0-y0) + x0*y1) * base
+    return b,c
+
 def funcengrevf(par, eng, is_up=True):
     # parameters
     # r0 : idling rev
@@ -44,7 +53,8 @@ def funcengrevf(par, eng, is_up=True):
     epd = par[5]
     ep = par[6]
     ef = par[7]
-    
+
+    '''
     dd0,dd1=qeq2pt(e0d,r0,epd,rp, par[8])
     dd2 = par[8]    
     dp0,dp1=qeq2pt(epd,rp,ef,rf, par[9])    
@@ -53,7 +63,16 @@ def funcengrevf(par, eng, is_up=True):
     ud2 = par[10]
     up0,up1=qeq2pt(ep,rp,ef,rf, par[11])
     up2 = par[11]
-    
+    '''
+    dd1,dd2=qeq2pt2(e0d,r0,epd,rp, par[8])
+    dd0 = par[8]    
+    dp1,dp2=qeq2pt2(epd,rp,ef,rf, par[9])    
+    dp0 = par[9]    
+    ud1,ud2=qeq2pt2(e0,r0,ep,rp, par[10])
+    ud0 = par[10]
+    up1,up2=qeq2pt2(ep,rp,ef,rf, par[11])
+    up0 = par[11]
+   
     if eng < e0d:
         return r0
     if eng >= ef:
@@ -65,12 +84,12 @@ def funcengrevf(par, eng, is_up=True):
         if eng < e0:
             return r0
         else:
-            if eng < epd:
+            if eng < ep:
                 return ud0 * eng2 + ud1 * eng + ud2
             else:
                 return up0 * eng2 + up1 * eng + up2
     else:
-        if eng < ep:
+        if eng < epd:
             return dd0 * eng2 + dd1 * eng + dd2
         else:
             return dp0 * eng2 + dp1 * eng + dp2
@@ -127,9 +146,9 @@ def resengrevb(par, eng, rev):
 
 def fitengrevf(eng, rev,
                par0=[700,3000,5500,
-                     180,185,
-                     192.5,195,
-                     210,
+                     190,195,
+                     205,210,
+                     230,
                      0,0,
                      0,0]):
     '''
@@ -137,7 +156,7 @@ def fitengrevf(eng, rev,
     rev: (rpm) array
     '''
     return scipy.optimize.least_squares(resengrevf, par0,
-                                        args=(eng, rev))
+                                        args=(eng, rev),verbose=2, loss='huber')
 
 def fitengrevb(eng, rev,par0=[700,3500,60,65,50,0,0]):
     '''
@@ -250,14 +269,13 @@ if __name__ == '__main__':
     pdb.set_trace()
 
     par=[700,3000,5500,
-         180,185,
-         192.5,195,
-         210,
-         0,184,-32420,0,143,-24500,
-         0,230,-41850,0,167,-29500]
-    x=[i for i in range(175,210)]
-    y=[funcengrevf(par,float(i),True) for i in range(175,210)]
-    yd=[funcengrevf(par,float(i),False) for i in range(175,210)]
+         190,195,
+         210,215,
+         230,
+         -1,-2,-3,-4]
+    x=[i for i in range(175,230)]
+    y=[funcengrevf(par,float(i),True) for i in range(175,230)]
+    yd=[funcengrevf(par,float(i),False) for i in range(175,230)]
     plt.plot(x, y, label="up", color='r', linewidth=3)
     plt.plot(x, yd, label="down", color='b', linewidth=3)
     plt.xlabel("u(m/s)")
@@ -265,33 +283,3 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
     
-    #load sog/rpm data
-    data=np.loadtxt("/home/ubuntu/matumoto/aws/proc/sogrpm/un.csv", delimiter=",")
-    data=np.transpose(data)
-    _rx=[]
-    _ry=[]
-
-    for i in range(len(data[1])):
-        if data[1][i] >= 0 and data[0][i] < 0:
-            continue
-        _rx.append(data[0][i])
-        _ry.append(data[1][i])
-            
-    rx = np.array(_rx)
-    ry = np.array(_ry)
-    
-    res=fitun(rx, ry, par0=[700,500.0,300.0,1000.0])
-    par=res.x
-    print("a=%f b=%f c=%f d=%f res=%f" % (par[0], par[1], par[2], par[3], res.cost))
-
-    umax = np.max(data[0])
-    umin = np.min(data[0])
-    u=np.array([float(i) for i in range(int(umin-0.5),int(umax+0.5))])
-    n=np.array([funcun(par, float(i)) for i in range(int(umin-0.5),int(umax+0.5))])       
-    
-    plt.scatter(rx, ry, label="data", alpha=0.3)
-    plt.plot(u, n, label="fit", color='r', linewidth=3)
-    plt.xlabel("u(m/s)")
-    plt.ylabel("Rev(RPM)")
-    plt.grid(True)
-    plt.show()
