@@ -1772,6 +1772,7 @@ def plotengrev(path, streng, strrev,
             parf=ropt.x
             print("meng-rev ahead optimized parameters:")
             print(parf)
+            saveParengrevf(path, parf) 
             is_fitf = True    
     
         plt.xlim(xmin,xmax)
@@ -1818,6 +1819,7 @@ def plotengrev(path, streng, strrev,
             parb=ropt.x
             print("meng-rev astern optimized parameters:")
             print(parb)
+            saveParengrevb(path, parb)
             is_fitb = True
     
         plt.xlim(xmin,xmax)
@@ -1913,7 +1915,23 @@ def saveParun(path, par):
 def loadParun(path):
     csvname="parun.csv"
     return np.loadtxt(path+"/"+csvname, delimiter=',')
-        
+
+def saveParengrevf(path, par):
+    csvname="parengrevf.csv"
+    np.savetxt(path+"/"+csvname, par,  delimiter=',')
+
+def saveparengrevb(path, par):                          
+    csvname="parengrevb.csv"
+    np.savetxt(path+"/"+csvname, par, delimiter=',')
+
+def loadParengrevf(path, par):
+    csvname="parengrevf.csv"
+    return np.loadtxt(path+"/"+csvname, delimiter=',')
+                          
+def loadParengrevb(path, par):                          
+    csvname="parengrevb.csv"
+    return np.loadtxt(path+"/"+csvname, delimiter=',')    
+
 def plotundu(path, parx, pary, parz, strx, stry, strz, rx, ry, rz):
     par = loadParun(path)
     cu = opt.cu(par)

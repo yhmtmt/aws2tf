@@ -110,10 +110,10 @@ def funcengrevb(par, eng, is_up=True):
     e0d=par[2]
     e0=par[3]
     ef=par[4]
-    d0,d1=qeq2pt(e0d,r0,ef,rf,par[5])
-    d2=par[5]
-    u0,u1=qeq2pt(e0,r0,ef,rf,par[6])
-    u2=par[6]
+    d1,d2=qeq2pt2(e0d,r0,ef,rf,par[5])
+    d0=par[5]
+    u1,u2=qeq2pt2(e0,r0,ef,rf,par[6])
+    u0=par[6]
     
     if eng > e0:
         return r0
