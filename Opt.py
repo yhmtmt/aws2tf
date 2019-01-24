@@ -25,7 +25,6 @@ def qeq2pt(x0,y0,x1,y1,c):
     return a,b
 
 def qeq2pt2(x0,y0,x1,y1,a):
-    x1mx0=x1-x0
     x0x0=x0*x0
     x1x1=x1*x1
     base = 1/(x1-x0)
