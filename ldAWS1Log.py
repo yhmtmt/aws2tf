@@ -165,9 +165,10 @@ def sampleMaxDistPoints(nsmpl, vecs):
     ntotal = 0
     ndim = len(vecs)
     for vec in vecs:
-        vmax.append(np.max(vec))
-        vmin.append(np.min(vec))
-        ntotal = len(vec)
+        if len(vec) != 0:
+            vmax.append(np.max(vec))
+            vmin.append(np.min(vec))
+            ntotal = len(vec)
         
     vfac=[]
     for ivec in range(ndim):
@@ -232,12 +233,11 @@ def sampleMaxDistPoints(nsmpl, vecs):
     
         
 def getTimeRangeVecs(t, v, trng):
+    x=[]
     for tr in trng:
-        ix0s,ix0e = seekLogTime(tx, tr[0])
-        ix1s,ix1e = seekLogTime(tx, tr[1])
+        ix0s,ix0e = seekLogTime(t, tr[0])
+        ix1s,ix1e = seekLogTime(t, tr[1])
         for ix in range(ix0e, ix1s):           
-            t = t[ix]
-            x = v[ix]
             x.append(v[ix])
     return np.array(x)
 
@@ -1899,13 +1899,14 @@ def load_u_v_r_phi_n(path):
     t = u[:,0]
     u = u[:,1]
     v=np.loadtxt(fname_v, delimiter=',')
-    v = u[:,1]
+    v = v[:,1]
     r=np.loadtxt(fname_r, delimiter=',')
     r = r[:,1]
     psi=np.loadtxt(fname_psi, delimiter=',')
     psi = psi[:,1]
     n=np.loadtxt(fname_n, delimiter=',')
-
+    n=n[:,1]
+    
     return t,u,v,r,psi,n
     
 def saveParun(path, par):

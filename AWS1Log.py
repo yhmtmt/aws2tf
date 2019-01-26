@@ -725,12 +725,12 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         
         # select data range with non zero n
         # split data into three mode        
-        tahd = findInRangeTimeRanges(t, n, vmax=6000, vmin=600)
-        tpln = findInRangeTimeRanges(t, u, vmax=30, vmin=uthpd)
-        tdsp = complementTimeRange(t, tpln)
-        tahddsp = intersectTimeRanges(tahd, tdsp) # mode 0
-        tahdpln = intersectTimeRanges(tahd, tpln) # mode 1
-        tast = findInRangeTimeRanges(t, n, vmax=-600, vmin=6000) # mode 2
+        tahd = ldl.findInRangeTimeRanges(t, n, vmax=6000, vmin=600)
+        tpln = ldl.findInRangeTimeRanges(t, u, vmax=30, vmin=uthpd)
+        tdsp = ldl.complementTimeRange(t, tpln)
+        tahddsp = ldl.intersectTimeRanges(tahd, tdsp) # mode 0
+        tahdpln = ldl.intersectTimeRanges(tahd, tpln) # mode 1
+        tast = ldl.findInRangeTimeRanges(t, n, vmax=-600, vmin=-6000) # mode 2
         
         uahddsp = ldl.getTimeRangeVecs(t, u, tahddsp)
         duahddsp = ldl.getTimeRangeVecs(t, du, tahddsp)        
