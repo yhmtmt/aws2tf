@@ -702,7 +702,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     rx_ap = log.mdl_params["xr1"]
     ry_ap = log.mdl_params["yr1"]
 
-    nsmpl=5
+    nsmpl=32
     smpl_ad=None
     smpl_ap=None
     smpl_as=None

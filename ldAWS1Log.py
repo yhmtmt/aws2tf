@@ -202,6 +202,16 @@ def sampleMaxDistPoints(nsmpl, vecs):
     smpl = np.zeros(shape=(ndim), dtype='float64')
     dist = np.zeros(shape=(nsmpl), dtype='float64')
     ddiff = np.zeros(shape=(nsmpl), dtype='float64')
+
+    # Only for debug
+    def tot_dist(samples,vfac, ndim):
+        d=0.0
+        for k in range(len(samples)):
+            for j in range(len(samples)):
+                for i in range(ndim):
+                    d+=abs(samples[j][i]-samples[k][i])*vfac[i]
+        print(("Total distance: %f" % d))
+        
     for ismpl in range(nsmpl, ntotal):
         for i in range(ndim):
             smpl[i] = vecs[i][ismpl]
@@ -210,7 +220,7 @@ def sampleMaxDistPoints(nsmpl, vecs):
         for jsmpl in range(nsmpl):
             dist[jsmpl]=0.0
             for i in range(ndim):
-                d = (samples[jsmpl][i] - smpl[i]) * vfac[i]
+                d = abs(samples[jsmpl][i] - smpl[i]) * vfac[i]
                 dist[jsmpl] += d
 
         # calculate distance differences by replacing
@@ -225,13 +235,14 @@ def sampleMaxDistPoints(nsmpl, vecs):
         if(ddiff_max != 0.0):
             # replace sapmle
             for i in range(ndim):
-                samples[jsmpl][i] = smpl[i]
+                samples[jsmpl_max][i] = smpl[i]
+            #tot_dist(samples, vfac, ndim)
             #updating dtable
             for i in range(nsmpl):
-                if i == jsmpl:
+                if i == jsmpl_max:
                     dtable[i][i] = 0.0
                 else:
-                    dtable[jsmpl][i] = dtable[i][jsmpl] = dist[i]
+                    dtable[jsmpl_max][i] = dtable[i][jsmpl_max] = dist[i]
     return samples
     
         
