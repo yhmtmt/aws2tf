@@ -702,7 +702,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     rx_ap = log.mdl_params["xr1"]
     ry_ap = log.mdl_params["yr1"]
 
-    nsmpl=32
+    nsmpl=5
     smpl_ad=None
     smpl_ap=None
     smpl_as=None
@@ -760,22 +760,23 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         phiast = ldl.getTimeRangeVecs(t, phi, tast)
 
         smpl = ldl.sampleMaxDistPoints(nsmpl, [uast,duast,vast,dvast,rast,drast,phiast,nast])
-        if(smpl_as == None):
+        if(smpl_as is None):
             smpl_as = smpl
-        else:
-            smpl_as = np.concatenate(smpl_as, smpl)
+        elif(smpl is not None):
+            
+            smpl_as = np.concatenate((smpl_as, smpl))
         
         smpl = ldl.sampleMaxDistPoints(nsmpl, [uahdpln,duahdpln,vahdpln,dvahdpln,rahdpln,drahdpln,phiahdpln,nahdpln])
-        if(smpl_ap == None):
+        if(smpl_ap is None):
             smpl_ap = smpl
-        else:
-            smpl_ap = np.concatenate(smpl_ap, smpl)
+        elif(smpl is not None):
+            smpl_ap = np.concatenate((smpl_ap, smpl))
         
         smpl = ldl.sampleMaxDistPoints(nsmpl, [uahddsp,duahddsp,vahddsp,dvahddsp,rahddsp,drahddsp,phiahddsp,nahddsp])
-        if(smpl_ad == None):
+        if(smpl_ad is None):
             smpl_ad = smpl
-        else:
-            smpl_ad = np.concatenate(smpl_ad, smpl)
+        elif(smpl is not None):
+            smpl_ad = np.concatenate((smpl_ad, smpl))
 
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
 
@@ -797,14 +798,16 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             stridx="%d" % j            
             for i in range(len(parstr)):
                 key=parstr[i]+stridx
-                log.mdl_params[key] = par[key]
+                if key in par:
+                    log.mdl_params[key] = par[key]
 
     def print_mdl_param_update(par):
         for j in range(3):
-            stridx="%d" % j            
+            stridx="%d" % j
             for i in range(len(par)):
                 key=parstr[i]+stridx
-                print(parstr[i]+stridx+(" %0.12f->%0.12f" % (log.mdl_params[key], par[key])))
+                if key in par:
+                    print(parstr[i]+stridx+(" %0.12f->%0.12f" % (log.mdl_params[key], par[key])))
             
     def is_rank_full(s,eps=1.0e-6):
         for i in range(s.shape[0]):
@@ -819,15 +822,15 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         eqxy=[]
         resxy=[]
         for ismpl in range(smpl.shape[0]):        
-            eqxy,resxy=get3DoFEqXY(smpl[ismpl][0], smpl[ismpl][1],
+            eq,res=ldl.get3DoFEqXY(smpl[ismpl][0], smpl[ismpl][1],
                                    smpl[ismpl][2], smpl[ismpl][3],
                                    smpl[ismpl][4], smpl[ismpl][5],
                                    smpl[ismpl][6], smpl[ismpl][7],
                                    m, rx, ry)
-            eqxy.append(eqxy[0])
-            eqxy.append(eqxy[1])
-            resxy.append(resxy[0])
-            resxy.append(resxy[1])
+            eqxy.append(eq[0])
+            eqxy.append(eq[1])
+            resxy.append(res[0])
+            resxy.append(res[1])
         
         eqxy = np.array(eqxy)
         resxy = np.array(resxy)
@@ -837,21 +840,32 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             par=np.dot(eqxy_inv, rsxy)
             Ndr=0.0
             for ismpl in range(smpl.shape[0]):
-                Ndr_as+=get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
+                Ndr_as+=ldl.get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
                                    smpl[ismpl][2], smpl[ismpl][3],
                                    smpl[ismpl][4], smpl[ismpl][5],
                                    smpl[ismpl][6], smpl[ismpl][7],
                                    m, rx, ry, par)
-            Ndr/=smpl.shape[0]        
+            Ndr/=smpl.shape[0]
+            par=reorder_mdl_param(idx, par, Ndr)            
+        else:
+            print(("Model%d" % idx)+"solver failed with poor rank")
+            print(s)
+            par=None    
 
-        par=reorder_mdl_param(idx, par, Ndr)
         return par
 
     paras=solve(2, smpl_as, m_as, rx_as, ry_as)
     parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
     parad=solve(0, smpl_ad, m_ad, rx_ad, ry_ad)    
 
-    par={**parad,**parap,**paras}
+    par={}
+    if(parad is not None):
+        par = {**par,**parad}
+    if(parap is not None):
+        par = {**par, **parap}
+    if(paras is not None):
+        par = {**par, **paras}
+        
     print_mdl_param_update(par)
     set_mdl_param(par)
     log.save_model_param(path_model_param)    

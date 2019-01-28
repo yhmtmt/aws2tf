@@ -169,14 +169,17 @@ def sampleMaxDistPoints(nsmpl, vecs):
             vmax.append(np.max(vec))
             vmin.append(np.min(vec))
             ntotal = len(vec)
-        
+
+    if ntotal == 0:
+        return None
+    
     vfac=[]
     for ivec in range(ndim):
         vfac.append(1.0/(vmax[ivec] - vmin[ivec]))
 
     vfac=np.array(vfac)
-    dtable=np.zeros(shape=(nsmpl,nsmpl), dtype=float64)
-    samples=np.zeros(shape=(nsmpl,len(vecs)), dtype=float64)
+    dtable=np.zeros(shape=(nsmpl,nsmpl), dtype='float64')
+    samples=np.zeros(shape=(nsmpl,len(vecs)), dtype='float64')
     
     # fill first nsmpl samples
     for ivec in range(len(vecs)):
@@ -196,9 +199,9 @@ def sampleMaxDistPoints(nsmpl, vecs):
                 dtable[i][j] = dtable[j][i] = D
                 
     # forward sampling loop nsmpl to ntotal
-    smpl = np.zeros(shape=(ndim), dtype=float64)
-    dist = np.zeros(shape=(nsmpl), dtype=float64)
-    ddiff = np.zeros(shape=(nsmpl), dtype=float64)
+    smpl = np.zeros(shape=(ndim), dtype='float64')
+    dist = np.zeros(shape=(nsmpl), dtype='float64')
+    ddiff = np.zeros(shape=(nsmpl), dtype='float64')
     for ismpl in range(nsmpl, ntotal):
         for i in range(ndim):
             smpl[i] = vecs[i][ismpl]
