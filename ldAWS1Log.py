@@ -1491,7 +1491,19 @@ def loadStableTurn(path):
     return turns
 
 def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
-    # build a set of stable turn equations    
+    '''
+    An equation for 5 parameters below is generated.
+      "ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"
+    '''
+    # parXY is given as the following order.
+    #   ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "CL", "CD", "CTL", "CTQ"]
+
+    # build a set of stable turn equations
+    xg = parXY[0]
+    yg = parXY[1]
+    Iz = m * (xg * xg  + yg * yg)
+    Izdr = Iz * dr
+    
     vabsv = v * abs(v)
     rabsr = r * abs(r)
     nabsn = n * abs(n)
@@ -1502,6 +1514,8 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     uu = u * u
     
     mrr = m * r * r
+    muu = m * uu
+    muv = m * uv
     mur = m * ur
     mvr = m * vr
     mdr = m * dr
@@ -1532,19 +1546,16 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     Nkq = -nabsn * (-yr * nrx +xr * nry)
     
     if vrnr < 0:
-        Xcl = -Xcl        
-        Ycl = -Ycl
         Ncl = -Ncl
 
-    eq = [mur, mvr, uu, -uv, -ur, 0, 0, 0, -v, -r, 0, 0, 0, -vabsv, -rabsr,
-         Ncl, Ncd, Nkl, Nkq]
+    coeff = [mur+mdv, mvr-mdu, uu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
     
-    Ndr = 0;
-    for iterm in range(len(eq)):
-        Ndr += eq[iterm] * par[iterm]
+    res = muv - muu + Izdr;
+    for iterm in range(len(coeff)):
+        res += coeff[iterm] * parXY[iterm]
+    eq = [dr, v, r, vabsv, rabsr]
     
-    return Ndr / dr
-
+    return eq,res
 
 def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
     # build a set of stable turn equations    
@@ -1594,15 +1605,21 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
         Xcl = -Xcl        
         Ycl = -Ycl
 
-    eq=[[-mrr, -mdr, -du, vr, r, -u, 0, 0, 0, 0, -uabsu, 0, 0, 0, 0,
+    eq=[[-mrr, -mdr, -du, vr, r, -u, 0, 0, -uabsu, 0, 0,
          Xcl, Xcd, Xkl, Xkq],
-        [mdr, -mrr, ur, -dv, -dr, 0, -u, -r, 0, 0, 0, -vabsv, -rabsr, 0, 0,
+        [mdr, -mrr, ur, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr,
          Ycl, Ycd, Ykl, Ykq]]
     res=[mvr-mdu, mur-mdv]
     return eq,res
     
 
 def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
+    '''
+    Two equations for 15 parameters below
+      "xg", "yg", "ma_xu", "ma_yv", "ma_nv", 
+      "dl_xu", "dl_yv", "dl_yr", "dq_xu", "dq_yv", "dq_yr", 
+      "CL", "CD", "CTL", "CTQ"
+    '''
     # build a set of stable turn equations    
     uabsu = u * abs(u)
     vabsv = v * abs(v)
