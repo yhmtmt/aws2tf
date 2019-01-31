@@ -1493,10 +1493,10 @@ def loadStableTurn(path):
 def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     '''
     An equation for 5 parameters below is generated.
-      "ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"
+      "s ma_nr","s dl_nv", "s dl_nr","s dq_nv", "s dq_nr"
     '''
     # parXY is given as the following order.
-    #   ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "CL", "CD", "CTL", "CTQ"]
+    #   ["xg", "yg", "s ma_yv", "s ma_nv", "CL", "CD", "CTL", "CTQ"]
 
     # build a set of stable turn equations
     xg = parXY[0]
@@ -1548,16 +1548,20 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     if vrnr < 0:
         Ncl = -Ncl
 
-    coeff = [mur+mdv, mvr-mdu, uu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
+    coeff = [mur+mdv, mvr-mdu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
     
-    res = muv - muu + Izdr;
+    res = muv - uu + Izdr;
     for iterm in range(len(coeff)):
         res += coeff[iterm] * parXY[iterm]
     eq = [dr, v, r, vabsv, rabsr]
     
     return eq,res
 
-def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
+def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
+    '''
+    two equations  for 15 parameters below (s means scale 1/(m-ma_xu))
+    "s m", "s m xg", "s m yg", "s ma_yv", "s ma_nv", "s dl_xu", "s dl_yv", "s dl_yr", "s dq_xu", "s dq_yv", "s dq_yr", "s CL", "s CD", "s CTL", "s CTQ"
+    ''' 
     # build a set of stable turn equations    
     uabsu = u * abs(u)
     vabsv = v * abs(v)
@@ -1566,14 +1570,7 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
 
     vr = v * r
     ur = u * r
-    
-    mrr = m * r * r
-    mur = m * ur
-    mvr = m * vr
-    mdr = m * dr
-    mdu = m * du
-    mdv = m * dv
-    
+       
     # (nrx, nry) radder direction vector
     nrx = math.cos(psi)
     nry = math.sin(psi)
@@ -1605,11 +1602,9 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,m,xr,yr):
         Xcl = -Xcl        
         Ycl = -Ycl
 
-    eq=[[-mrr, -mdr, -du, vr, r, -u, 0, 0, -uabsu, 0, 0,
-         Xcl, Xcd, Xkl, Xkq],
-        [mdr, -mrr, ur, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr,
-         Ycl, Ycd, Ykl, Ykq]]
-    res=[mvr-mdu, mur-mdv]
+    eq=[[-vr, -rr, -dr, vr, r, -u, 0, 0, -uabsu, 0, 0, Xcl, Xcd, Xkl, Xkq],
+        [-dv, dr, -rr, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr, Ycl, Ycd, Ykl, Ykq]]
+    res=[-du, ur]
     return eq,res
     
 
