@@ -1570,7 +1570,8 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
 
     vr = v * r
     ur = u * r
-       
+    rr = r * r
+    
     # (nrx, nry) radder direction vector
     nrx = math.cos(psi)
     nry = math.sin(psi)
