@@ -310,7 +310,7 @@ class AWS1Log:
             beta *= radian
             u = sog * math.cos(beta)
             v = sog * math.sin(beta)
-            r = vstatt[5]
+            r = vstatt[5] * radian
             n = (vengr[0] if (gamma >= 1.0) else (-vengr[0] if (gamma <= -1.0) else 0))
             ueng=vuiinst[1] if vuiinst[0]==0 else vapinst[1]
             urud=vuiinst[3] if vuiinst[0]==0 else vapinst[3]
@@ -763,7 +763,6 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         if(smpl_as is None):
             smpl_as = smpl
         elif(smpl is not None):
-            
             smpl_as = np.concatenate((smpl_as, smpl))
         
         smpl = ldl.sampleMaxDistPoints(nsmpl, [uahdpln,duahdpln,vahdpln,dvahdpln,rahdpln,drahdpln,phiahdpln,nahdpln])
@@ -778,6 +777,10 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         elif(smpl is not None):
             smpl_ad = np.concatenate((smpl_ad, smpl))
 
+    np.savetxt("solve3dof_smpl_as.csv", smpl_as, delimiter=',', fmt="%.2f")
+    np.savetxt("solve3dof_smpl_ap.csv", smpl_ap, delimiter=',', fmt="%.2f")
+    np.savetxt("solve3dof_smpl_ad.csv", smpl_ad, delimiter=',', fmt="%.2f")
+    
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
     parxystr = ["sm", "xg", "yg", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dq_xu", "dq_yv", "dq_yr", "CL", "CD", "CTL", "CTQ"]
     parnstr = ["ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"]
