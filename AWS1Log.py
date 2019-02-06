@@ -702,7 +702,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     rx_ap = log.mdl_params["xr1"]
     ry_ap = log.mdl_params["yr1"]
 
-    nsmpl=32
+    nsmpl=64
     smpl_ad=None
     smpl_ap=None
     smpl_as=None
@@ -776,11 +776,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             smpl_ad = smpl
         elif(smpl is not None):
             smpl_ad = np.concatenate((smpl_ad, smpl))
-
-    np.savetxt("solve3dof_smpl_as.csv", smpl_as, delimiter=',', fmt="%.2f")
-    np.savetxt("solve3dof_smpl_ap.csv", smpl_ap, delimiter=',', fmt="%.2f")
-    np.savetxt("solve3dof_smpl_ad.csv", smpl_ad, delimiter=',', fmt="%.2f")
-    
+  
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
     parxystr = ["sm", "xg", "yg", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dq_xu", "dq_yv", "dq_yr", "CL", "CD", "CTL", "CTQ"]
     parnstr = ["ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"]
@@ -845,7 +841,14 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         
         eqxy = np.array(eqxy)
         resxy = np.array(resxy)
+        np.savetxt(("solve3dof_smpl_%d.csv"%idx), smpl, delimiter=',', fmt="%.2f")
+        np.savetxt(("solve3dof_eqxy_%d.csv"%idx), eqxy, delimiter=',', fmt="%.2f")
+        np.savetxt(("solve3dof_resxy_%d.csv"%idx), resxy, delimiter=',', fmt="%.2f")
+        
         U,s,V=np.linalg.svd(eqxy, full_matrices=True)
+        print(("Model%d XY" % idx))
+        print(s)
+        
         if(is_rank_full(s)):
             eqxy_inv=psinv(U,s,V)
             parxy=np.dot(eqxy_inv, resxy)
@@ -866,7 +869,12 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
                 
             eqn = np.array(eqn)
             resn = np.array(resn)
+            np.savetxt(("solve3dof_eqn_%d.csv"%idx), eqn, delimiter=',', fmt="%.2f")
+            np.savetxt(("solve3dof_resn_%d.csv"%idx), resn, delimiter=',', fmt="%.2f")              
             U,s,V=np.linalg.svd(eqn, full_matrices=True)
+            print(("Model%d N" % idx))
+            print(s)
+            
             if(is_rank_full(s)):
                 eqn_inv=psinv(U,s,V)
                 parn=np.dot(eqn_inv, resn)
@@ -877,8 +885,6 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             else:
                 par=None
         else:
-            print(("Model%d" % idx)+"solver failed with poor rank")
-            print(s)
             par=None
 
         return par
