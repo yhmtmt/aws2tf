@@ -1597,7 +1597,7 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
     Ycl = 0.5 * vrnrp * (u - yr * r)
     Ycd = 0.5 * vrnrp * (v + xr * r)
     Ykl = -vrnr * n * nry
-    Ykq = -nabsn * nrx
+    Ykq = -nabsn * nry
     
     if vrnr < 0:
         Xcl = -Xcl        
