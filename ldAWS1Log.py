@@ -1590,19 +1590,19 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
     # dot product (vrx, vry)^t (nrxp, nryp)
     vrnrp = vrx * nrxp + vry * nryp
     
-    Xcl = 0.5 * vrnrp * (- v - xr * r)
-    Xcd = 0.5 * vrnrp * (u - yr * r)
+    Xcl = 0.5 * vrnrp * (- vry)
+    Xcd = 0.5 * abs(vrnrp) * (vrx)
     Xkl = -vrnr * n * nrx
     Xkq = -nabsn * nrx
-    Ycl = 0.5 * vrnrp * (u - yr * r)
-    Ycd = 0.5 * vrnrp * (v + xr * r)
+    Ycl = 0.5 * vrnrp * (vrx)
+    Ycd = 0.5 * abs(vrnrp) * (vry)
     Ykl = -vrnr * n * nry
     Ykq = -nabsn * nry
     
     if vrnr < 0:
         Xcl = -Xcl        
         Ycl = -Ycl
-
+        
     eq=[[-vr, -rr, -dr, vr, r, -u, 0, 0, -uabsu, 0, 0, Xcl, Xcd, Xkl, Xkq],
         [-dv, dr, -rr, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr, Ycl, Ycd, Ykl, Ykq]]
     res=[-du, ur]
