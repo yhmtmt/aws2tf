@@ -1541,7 +1541,7 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     vrnrp = vrx * nrxp + vry * nryp
 
     Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
-    Ncd = 0.5 * vrnrp * (-yr * yr * yr * r + xr +xr * xr * r)
+    Ncd = 0.5 * abs(vrnrp) * (-yr * yr * yr * r + xr +xr * xr * r)
     Nkl = -vrnr * n * (-yr * nrx + xr * nry)
     Nkq = -nabsn * (-yr * nrx +xr * nry)
     
