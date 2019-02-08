@@ -1490,7 +1490,7 @@ def loadStableTurn(path):
         turns=[turns]        
     return turns
 
-def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
+def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
     '''
     An equation for 5 parameters below is generated.
       "s ma_nr","s dl_nv", "s dl_nr","s dq_nv", "s dq_nr"
@@ -1501,7 +1501,7 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     # build a set of stable turn equations
     xg = parXY[0]
     yg = parXY[1]
-    Iz = m * (xg * xg  + yg * yg)
+    Iz = sm * (xg * xg  + yg * yg)
     Izdr = Iz * dr
     
     vabsv = v * abs(v)
@@ -1513,14 +1513,10 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
     uv = u * v
     uu = u * u
     
-    mrr = m * r * r
-    muu = m * uu
-    muv = m * uv
-    mur = m * ur
-    mvr = m * vr
-    mdr = m * dr
-    mdu = m * du
-    mdv = m * dv
+    mur = sm * ur    
+    mdv = sm * dv
+    mvr = sm * vr
+    mdu = sm * du
     
     # (nrx, nry) radder direction vector
     nrx = math.cos(psi)
@@ -1550,9 +1546,10 @@ def get3DoFEqN(u,du,v,dv,r,dr,psi,n,m,xr,yr,parXY):
 
     coeff = [mur+mdv, mvr-mdu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
     
-    res = muv - uu + Izdr;
+    res = (m - 1.0) * uv + Izdr
     for iterm in range(len(coeff)):
         res += coeff[iterm] * parXY[iterm]
+        
     eq = [dr, v, r, vabsv, rabsr]
     
     return eq,res
@@ -1605,9 +1602,129 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
         
     eq=[[-vr, -rr, -dr, vr, r, -u, 0, 0, -uabsu, 0, 0, Xcl, Xcd, Xkl, Xkq],
         [-dv, dr, -rr, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr, Ycl, Ycd, Ykl, Ykq]]
-    res=[-du, ur]
+    res=[-du, -ur]
     return eq,res
+
+
+def eval3DoFModel(idx, u,du,v,dv,r,dr,psi,n,m,xr,yr,par):
+    '''
+    calculates terms of M, C, Dl, Dq, CL, CD, KL, KQ and residual 
+    '''
     
+    def parStr(str):
+        return ("%s%d" % (str, idx))
+    
+    xg = par[parStr("xg")]
+    yg = par[parStr("yg")]
+    Xdu = par[parStr("ma_xu")]
+    Ydv = par[parStr("ma_yv")]
+    Ndv = Ydr = par[parStr("ma_nv")]
+    Ndr = par[parStr("ma_nr")]
+    Xu = par[parStr("dl_xu")]
+    Yv = par[parStr("dl_yv")]
+    Yr = par[parStr("dl_yr")]
+    Nv = par[parStr("dl_nv")]
+    Nr = par[parStr("dl_nr")]
+    Xuu = par[parStr("dq_xu")]
+    Yvv = par[parStr("dq_yv")]
+    Yrr = par[parStr("dq_yr")]
+    Nvv = par[parStr("dq_nv")]
+    Nrr = par[parStr("dq_nr")]
+    CL  = par[parStr("CL")]
+    CD = par[parStr("CD")]
+    CTL = par[parStr("CTL")]
+    CTQ = par[parStr("CTQ")]    
+    
+    Iz = m * (xg * xg  + yg * yg)
+    Izdr = Iz * dr
+    
+    uabsu = u * abs(u)
+    vabsv = v * abs(v)
+    rabsr = r * abs(r)
+    nabsn = n * abs(n)
+
+    vr = v * r
+    ur = u * r
+    rr = r * r
+    uv = u * v
+    uu = u * u
+    mrr = m * rr
+    muu = m * uu
+    muv = m * uv
+    mur = m * ur
+    mvr = m * vr
+    mdr = m * dr
+    mdu = m * du
+    mdv = m * dv
+    
+    # (nrx, nry) radder direction vector
+    nrx = math.cos(psi)
+    nry = math.sin(psi)
+
+    # (nrxp, nryp) the vector  perpendicular to (nrx, nry)
+    nrxp = -nry
+    nryp = nrx
+
+    # (vrx, vry) velocity of rudder 
+    vrx = u - yr * r
+    vry = v + xr * r
+
+    # dot product  (vrx, vry)^t (nrx, nry)
+    vrnr = vrx * nrx + vry * nry
+
+    # dot product (vrx, vry)^t (nrxp, nryp)
+    vrnrp = vrx * nrxp + vry * nryp
+
+    Xcl = 0.5 * vrnrp * (- vry)
+    Xcd = 0.5 * abs(vrnrp) * (vrx)
+    Xkl = -vrnr * n * nrx
+    Xkq = -nabsn * nrx
+    Ycl = 0.5 * vrnrp * (vrx)
+    Ycd = 0.5 * abs(vrnrp) * (vry)
+    Ykl = -vrnr * n * nry
+    Ykq = -nabsn * nry    
+    Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
+    Ncd = 0.5 * abs(vrnrp) * (-yr * yr * yr * r + xr +xr * xr * r)
+    Nkl = -vrnr * n * (-yr * nrx + xr * nry)
+    Nkq = -nabsn * (-yr * nrx +xr * nry)
+    
+    if vrnr < 0:
+        Ncl = -Ncl
+        Xcl = -Xcl
+        Ycl = -Ycl
+    
+    Mx = (m - Xdu) * du - m * yg * dr
+    Cx = -m * xg * rr - (m - Ydv) * vr + Ndv * r
+    Dlx = -Xu * u
+    Dqx = -Xuu * uabsu
+    Clx = CL * Xcl
+    Cdx = CD * Xcd
+    Klx = CTL * Xkl
+    Kqx = CTQ * Xkq
+    
+    My = (m - Ydv) * dv +(m * xg - Ydr) * dr
+    Cy = - m * yg * rr  + (m - Xdu) * ur
+    Dly = - Yv * u - Yr * r
+    Dqy = - Yvv * vabsv - Yrr * rabsr
+    Cly = CL * Ycl
+    Cdy = CD * Ycd
+    Kly = CTL * Ykl
+    Kqy = CTQ * Ykq
+
+    Mn = - m * yg * du + (m * xg - Ndv) * dv + (Iz - Ndr) * dr
+    Cn = m * xg * ur + (m - Ydv) * uv - Ndv * ur + m * yg * vr - (m - Xdu) * uv
+    Dln = - Nv * v - Nr * r
+    Dqn = - Nvv * vabsv - Nrr * rabsr
+    Cln = CL * Ncl
+    Cdn = CD * Ncd
+    Kln = CTL * Nkl
+    Kqn = CTQ * Nkq
+    
+    forces=[[Mx, Cx, Dlx, Dqx, Clx, Cdx, Klx, Kqx],
+            [My, Cy, Dly, Dqy, Cly, Cdy, Kly, Kqy],
+            [Mn, Cn, Dln, Dqn, Cln, Cdn, Kln, Kqn]]
+    res = [np.sum(np.array(forces[0])), np.sum(np.array(forces[1])), np.sum(np.array(forces[2]))]
+    return forces, res
 
 def getStableTurnEq(u, v, r, psi, n, m, xr, yr):
     '''
