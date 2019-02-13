@@ -881,7 +881,22 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
                 ma_xu=m * (parxy[0]-1)/parxy[0]
                 scale=(m - ma_xu)
                 
-                par=reorder_mdl_param(idx, parxy, parn, ma_xu, scale)                
+                par=reorder_mdl_param(idx, parxy, parn, ma_xu, scale)
+                fs=[]
+                rs=[]
+                for ismpl in range(smpl.shape[0]):                
+                    f,r=eval3DoFModel(idx, smpl[ismpl][0], smpl[ismpl][1],
+                                  smpl[ismpl][2], smpl[ismpl][3],
+                                  smpl[ismpl][4], smpl[ismpl][5],
+                                  smpl[ismpl][6], smpl[ismpl][7],
+                                  m, xr, yr, par)
+                    fs.append(f)
+                    rs.append(r)                    
+                fs=np.array(fs)
+                rs=np.array(rs)
+                np.savetxt(("solve3dof_fs_%d.csv"%idx), fs, delimiter=',', fmt="%.2f")
+                np.savetxt(("solve3dof_rs_%d.csv"%idx), rs, delimiter=',', fmt="%.2f")              
+                
             else:
                 par=None
         else:
