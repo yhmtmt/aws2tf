@@ -1546,7 +1546,7 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
 
     coeff = [mur+mdv, mvr-mdu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
     
-    res = (m - 1.0) * uv + Izdr
+    res = (sm - 1.0) * uv + Izdr
     for iterm in range(len(coeff)):
         res += coeff[iterm] * parXY[iterm]
         
