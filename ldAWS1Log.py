@@ -1490,6 +1490,17 @@ def loadStableTurn(path):
         turns=[turns]        
     return turns
 
+def get3DoFEqSt(u, du, n):
+    '''
+    An equation for 4 parameters below is generated
+    "s dl_xu", "s dq_xu", "s kl", "s kq"
+    '''
+    Xkl = -u * n
+    Xkq = -n * abs(n)
+    eq=[u, u*abs(u), -Xkl, -Xkq]
+    res=du
+    return eq,du
+
 def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
     '''
     An equation for 5 parameters below is generated.

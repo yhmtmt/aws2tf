@@ -702,10 +702,13 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     rx_ap = log.mdl_params["xr1"]
     ry_ap = log.mdl_params["yr1"]
 
-    nsmpl=64
+    nsmpl=128
     smpl_ad=None
     smpl_ap=None
     smpl_as=None
+    smpl_ad_st=None
+    smpl_ap_st=None
+    smpl_as_st=None
     
     # sampling nsmpl vectors for each log
     for log_time in logs:
@@ -724,7 +727,8 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         dr=ldl.diffDataVec(t, r)
         
         # select data range with non zero n
-        # split data into three mode        
+        # split data into three mode
+       
         tahd = ldl.findInRangeTimeRanges(t, n, vmax=6000, vmin=600)
         tpln = ldl.findInRangeTimeRanges(t, u, vmax=30, vmin=uthpd)
         tdsp = ldl.complementTimeRange(t, tpln)
@@ -732,51 +736,78 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         tahdpln = ldl.intersectTimeRanges(tahd, tpln) # mode 1
         tast = ldl.findInRangeTimeRanges(t, n, vmax=-600, vmin=-6000) # mode 2
         
-        uahddsp = ldl.getTimeRangeVecs(t, u, tahddsp)
-        duahddsp = ldl.getTimeRangeVecs(t, du, tahddsp)        
-        vahddsp = ldl.getTimeRangeVecs(t, v, tahddsp)
-        dvahddsp = ldl.getTimeRangeVecs(t, dv, tahddsp)
-        rahddsp = ldl.getTimeRangeVecs(t, r, tahddsp)
-        drahddsp = ldl.getTimeRangeVecs(t, dr, tahddsp)        
-        nahddsp = ldl.getTimeRangeVecs(t, n, tahddsp)
-        phiahddsp = ldl.getTimeRangeVecs(t, phi, tahddsp)
+        tstv = ldl.findInRangeTimeRanges(t, u, vmax=1.0, vmin=-1.0)
+        tstr = ldl.findInRangeTimeRanges(t, r, vmax=0.03, vmin=-0.03)
+        tstphi= ldl.findInRangeTimeRanges(t, phi, vmax=0.08, vmin=-0.08)
+        tst = ldl.intersectTimeRanges(tstv, tstr)
+        tst = ldl.intersectTimeRanges(tstphi, tst)
+        tahddspst = ldl.intersectTimeRanges(tst, tahddsp)
+        tahdplnst = ldl.intersectTimeRanges(tst, tahdpln)
+        tastst = ldl.intersectTimeRanges(tst, tast)
 
-        uahdpln = ldl.getTimeRangeVecs(t, u, tahdpln)
-        duahdpln = ldl.getTimeRangeVecs(t, du, tahdpln)        
-        vahdpln = ldl.getTimeRangeVecs(t, v, tahdpln)
-        dvahdpln = ldl.getTimeRangeVecs(t, dv, tahdpln)
-        rahdpln = ldl.getTimeRangeVecs(t, r, tahdpln)
-        drahdpln = ldl.getTimeRangeVecs(t, dr, tahdpln)        
-        nahdpln = ldl.getTimeRangeVecs(t, n, tahdpln)
-        phiahdpln = ldl.getTimeRangeVecs(t, phi, tahdpln)
+        def getTimeRangeVecs(trng):
+            urng = ldl.getTimeRangeVecs(t, u, trng)
+            durng = ldl.getTimeRangeVecs(t, du, trng)
+            vrng = ldl.getTimeRangeVecs(t, v, trng)
+            dvrng = ldl.getTimeRangeVecs(t, dv, trng)
+            rrng = ldl.getTimeRangeVecs(t, r, trng)
+            drrng = ldl.getTimeRangeVecs(t, dr, trng)
+            nrng = ldl.getTimeRangeVecs(t, n, trng)
+            phirng = ldl.getTimeRangeVecs(t, phi, trng)
+            return urng, durng, vrng, dvrng, rrng, drrng, nrng, phirng
         
-        uast = ldl.getTimeRangeVecs(t, u, tast)
-        duast = ldl.getTimeRangeVecs(t, du, tast)        
-        vast = ldl.getTimeRangeVecs(t, v, tast)
-        dvast = ldl.getTimeRangeVecs(t, dv, tast)
-        rast = ldl.getTimeRangeVecs(t, r, tast)
-        drast = ldl.getTimeRangeVecs(t, dr, tast)        
-        nast = ldl.getTimeRangeVecs(t, n, tast)
-        phiast = ldl.getTimeRangeVecs(t, phi, tast)
-
-        smpl = ldl.sampleMaxDistPoints(nsmpl, [uast,duast,vast,dvast,rast,drast,phiast,nast])
+        uad,duad,vad,dvad,rad,drad,nad,phiad=getTimeRangeVecs(tahddsp)
+        uap,duap,vap,dvap,rap,drap,nap,phiap=getTimeRangeVecs(tahdpln)
+        uas,duas,vas,dvas,ras,dras,nas,phias=getTimeRangeVecs(tast)
+        uadst,duadst,vadst,dvadst,radst,dradst,nadst,phiadst=getTimeRangeVecs(tahddsp)
+        uapst,duapst,vapst,dvapst,rapst,drapst,napst,phiapst=getTimeRangeVecs(tahdpln)
+        uasst,duasst,vasst,dvasst,rasst,drasst,nasst,phiasst=getTimeRangeVecs(tast)
+        
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uas,duas,vas,dvas,
+                                        ras,dras,phias,nas])
         if(smpl_as is None):
             smpl_as = smpl
         elif(smpl is not None):
             smpl_as = np.concatenate((smpl_as, smpl))
         
-        smpl = ldl.sampleMaxDistPoints(nsmpl, [uahdpln,duahdpln,vahdpln,dvahdpln,rahdpln,drahdpln,phiahdpln,nahdpln])
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uap,duap,vap,dvap,
+                                        rap,drap,phiap,nap])
         if(smpl_ap is None):
             smpl_ap = smpl
         elif(smpl is not None):
             smpl_ap = np.concatenate((smpl_ap, smpl))
         
-        smpl = ldl.sampleMaxDistPoints(nsmpl, [uahddsp,duahddsp,vahddsp,dvahddsp,rahddsp,drahddsp,phiahddsp,nahddsp])
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uad,duad,vad,dvad,
+                                        rad,drad,phiad,nad])
         if(smpl_ad is None):
             smpl_ad = smpl
         elif(smpl is not None):
             smpl_ad = np.concatenate((smpl_ad, smpl))
   
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uasst,duasst,nasst])
+        if(smpl_as_st is None):
+            smpl_as_st = smpl
+        elif(smpl is not None):
+            smpl_as_st = np.concatenate((smpl_as_st, smpl))
+        
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uapst,duapst,napst])
+        if(smpl_ap_st is None):
+            smpl_ap_st = smpl
+        elif(smpl is not None):
+            smpl_ap_st = np.concatenate((smpl_ap_st, smpl))
+        
+        smpl = ldl.sampleMaxDistPoints(nsmpl,
+                                       [uadst,duadst,nadst])
+        if(smpl_ad_st is None):
+            smpl_ad_st = smpl
+        elif(smpl is not None):
+            smpl_ad_st = np.concatenate((smpl_ad_st, smpl))
+            
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
     parxystr = ["sm", "xg", "yg", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dq_xu", "dq_yv", "dq_yr", "CL", "CD", "CTL", "CTQ"]
     parnstr = ["ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"]
@@ -823,6 +854,27 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     def psinv(U, s, V):
         return np.dot(np.dot(np.transpose(V),np.pad(np.diag(1/s), [(0,V.shape[1]-s.shape[0]),(0,U.shape[0]-s.shape[0])],'constant')),np.transpose(U))
 
+    def solve_st(idx, smpl):
+        eqs=[]
+        ress=[]
+        for ismpl in range(smpl.shape[0]):
+            eq,res=ldl.get3DoFEqSt(smpl[ismpl][0], smpl[ismpl][1], smpl[ismpl][2])
+            eqs.append(eq)
+            ress.append(res)
+        eqs=np.array(eqs)
+        ress=np.array(ress)
+        np.savetxt(("solve3dofst_smpl_%d.csv"%idx),smpl,delimiter=',',fmt="%.2f")
+        np.savetxt(("solve3dofst_eq_%d.csv"%idx),eqs, delimiter=',',fmt="%.2f")
+        np.savetxt(("solve3dofst_res_%d.csv"%idx),ress, delimiter=',',fmt="%.2f")
+        U,s,V=np.linalg.svd(eqs, full_matrices=True)
+        print(("Model %d St"%idx))
+        print(s)
+        if(is_rank_full(s)):
+            eq_inv=psinv(U,s,V)
+            par=np.dot(eq_inv, ress)
+            print(par)
+        return par
+    
     def solve(idx, smpl, m, rx, ry):
         eqxy=[]
         eqn=[]
@@ -885,13 +937,17 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
                 fs=[]
                 rs=[]
                 for ismpl in range(smpl.shape[0]):                
-                    f,r=eval3DoFModel(idx, smpl[ismpl][0], smpl[ismpl][1],
+                    f,r=ldl.eval3DoFModel(idx, smpl[ismpl][0], smpl[ismpl][1],
                                   smpl[ismpl][2], smpl[ismpl][3],
                                   smpl[ismpl][4], smpl[ismpl][5],
                                   smpl[ismpl][6], smpl[ismpl][7],
-                                  m, xr, yr, par)
-                    fs.append(f)
-                    rs.append(r)                    
+                                  m, rx, ry, par)
+                    fs.append(f[0])
+                    fs.append(f[1])
+                    fs.append(f[2])
+                    rs.append(r[0])
+                    rs.append(r[1])
+                    rs.append(r[2])
                 fs=np.array(fs)
                 rs=np.array(rs)
                 np.savetxt(("solve3dof_fs_%d.csv"%idx), fs, delimiter=',', fmt="%.2f")
@@ -904,6 +960,10 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
 
         return par
 
+    parasst=solve_st(2,smpl_as_st)
+    parapst=solve_st(1,smpl_ap_st)
+    paradst=solve_st(0,smpl_ad_st)
+    
     paras=solve(2, smpl_as, m_as, rx_as, ry_as)
     parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
     parad=solve(0, smpl_ad, m_ad, rx_ad, ry_ad)    
