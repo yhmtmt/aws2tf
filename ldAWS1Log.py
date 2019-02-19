@@ -1507,7 +1507,7 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
       "s ma_nr","s dl_nv", "s dl_nr","s dq_nv", "s dq_nr"
     '''
     # parXY is given as the following order.
-    #   ["xg", "yg", "s ma_yv", "s ma_nv", "CL", "CD", "CTL", "CTQ"]
+    #   ["xg", "yg", "s ma_yv", "s ma_nv", "s CL", "s CD", "s CTL", "s CTQ"]
 
     # build a set of stable turn equations
     xg = parXY[0]
@@ -1565,6 +1565,63 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
     
     return eq,res
 
+def get3DoFEqXYwithStPar(u,du,v,dv,r,dr,psi,n,
+                         sdl_xu, sdq_xu, sCTL, sCTQ, xr,yr):
+    '''
+    two equations  for 15 parameters below (s means scale 1/(m-ma_xu))
+    "s m", "s m xg", "s m yg", "s ma_yv", "s ma_nv", "s dl_yv", 
+    "s dl_yr", "s dq_yv", "s dq_yr", "s CL", "s CD", "s CTL", "s CTQ"
+    ''' 
+    # build a set of stable turn equations    
+    uabsu = u * abs(u)
+    vabsv = v * abs(v)
+    rabsr = r * abs(r)
+    nabsn = n * abs(n)
+
+    vr = v * r
+    ur = u * r
+    rr = r * r
+    
+    # (nrx, nry) radder direction vector
+    nrx = math.cos(psi)
+    nry = math.sin(psi)
+
+    # (nrxp, nryp) the vector  perpendicular to (nrx, nry)
+    nrxp = -nry
+    nryp = nrx
+
+    # (vrx, vry) velocity of rudder 
+    vrx = u - yr * r
+    vry = v + xr * r
+
+    # dot product  (vrx, vry)^t (nrx, nry)
+    vrnr = vrx * nrx + vry * nry
+
+    # dot product (vrx, vry)^t (nrxp, nryp)
+    vrnrp = vrx * nrxp + vry * nryp
+    
+    Xcl = 0.5 * vrnrp * (- vry)
+    Xcd = 0.5 * abs(vrnrp) * (vrx)
+    Xkl = -vrnr * n * nrx
+    Xkq = -nabsn * nrx
+    Ycl = 0.5 * vrnrp * (vrx)
+    Ycd = 0.5 * abs(vrnrp) * (vry)
+    Ykl = -vrnr * n * nry
+    Ykq = -nabsn * nry
+    
+    if vrnr < 0:
+        Xcl = -Xcl        
+        Ycl = -Ycl
+        
+    eq=[[-vr, -rr, -dr, vr, r, 0, 0, 0, 0, Xcl, Xcd],
+        [dv, dr, -rr, -dv, -dr, -u, -r, -vabsv, -rabsr, Ycl, Ycd]]
+    res=[-du+u*sdl_xu+uabsu*sdq_xu-sCTL*Xkl-sCTQ*Xkq,
+         -ur-sCTL*Ykl-sCTQ*Ykq]
+    
+    return eq,res
+    
+    
+
 def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
     '''
     two equations  for 15 parameters below (s means scale 1/(m-ma_xu))
@@ -1612,7 +1669,7 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
         Ycl = -Ycl
         
     eq=[[-vr, -rr, -dr, vr, r, -u, 0, 0, -uabsu, 0, 0, Xcl, Xcd, Xkl, Xkq],
-        [-dv, dr, -rr, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr, Ycl, Ycd, Ykl, Ykq]]
+        [dv, dr, -rr, -dv, -dr, 0, -u, -r, 0, -vabsv, -rabsr, Ycl, Ycd, Ykl, Ykq]]
     res=[-du, -ur]
     return eq,res
 

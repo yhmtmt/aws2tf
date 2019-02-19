@@ -874,6 +874,99 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             par=np.dot(eq_inv, ress)
             print(par)
         return par
+
+
+    def solve_with_st_par(idx, smpl, par_st, m, rx, ry):
+        eqxy=[]
+        eqn=[]
+        resxy=[]
+        resn=[]
+        for ismpl in range(smpl.shape[0]):        
+            eq,res=ldl.get3DoFEqXYwithStPar(smpl[ismpl][0], smpl[ismpl][1],
+                                            smpl[ismpl][2], smpl[ismpl][3],
+                                            smpl[ismpl][4], smpl[ismpl][5],
+                                            smpl[ismpl][6], smpl[ismpl][7],
+                                            par_st[0], par_st[1],
+                                            par_st[2], par_st[3],
+                                            rx, ry)
+            eqxy.append(eq[0])
+            eqxy.append(eq[1])
+            resxy.append(res[0])
+            resxy.append(res[1])
+        
+        eqxy = np.array(eqxy)
+        resxy = np.array(resxy)
+        np.savetxt(("solve3dof_smpl_wst_%d.csv"%idx), smpl, delimiter=',', fmt="%.2f")
+        np.savetxt(("solve3dof_eqxy_wst_%d.csv"%idx), eqxy, delimiter=',', fmt="%.2f")
+        np.savetxt(("solve3dof_resxy_wst_%d.csv"%idx), resxy, delimiter=',', fmt="%.2f")
+        
+        U,s,V=np.linalg.svd(eqxy, full_matrices=True)
+        print(("Model%d XY" % idx))
+        print(s)
+        
+        if(is_rank_full(s)):
+            eqxy_inv=psinv(U,s,V)
+            parxy=np.dot(eqxy_inv, resxy)
+            print(parxy)
+            parxy=[ parxy[i] for i in range(parxy.shape[0]) ]            
+            parxy.insert(5, par_st[0])
+            parxy.insert(8, par_st[1])
+            parxy.append(par_st[2])
+            parxy.append(par_st[3])
+            parxy[1] = parxy[1] / parxy[0]
+            parxy[2] = parxy[2] / parxy[0]
+            for ismpl in range(smpl.shape[0]):                
+                eq,res=ldl.get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
+                                      smpl[ismpl][2], smpl[ismpl][3],
+                                      smpl[ismpl][4], smpl[ismpl][5],
+                                      smpl[ismpl][6], smpl[ismpl][7],
+                                      parxy[0], rx, ry,
+                                      [parxy[1],parxy[2],
+                                       parxy[3],parxy[4],
+                                       parxy[11],parxy[12],
+                                       parxy[13], parxy[14]])
+                eqn.append(eq)
+                resn.append(res)
+                
+            eqn = np.array(eqn)
+            resn = np.array(resn)
+            np.savetxt(("solve3dof_eqn_wst_%d.csv"%idx), eqn, delimiter=',', fmt="%.2f")
+            np.savetxt(("solve3dof_resn_wst_%d.csv"%idx), resn, delimiter=',', fmt="%.2f") 
+            U,s,V=np.linalg.svd(eqn, full_matrices=True)
+            print(("Model%d N" % idx))
+            print(s)
+            if(is_rank_full(s)):
+                eqn_inv=psinv(U,s,V)
+                parn=np.dot(eqn_inv, resn)
+                print(parn)
+                ma_xu=m * (parxy[0]-1)/parxy[0]
+                scale=(m - ma_xu)
+                
+                par=reorder_mdl_param(idx, parxy, parn, ma_xu, scale)
+                fs=[]
+                rs=[]
+                for ismpl in range(smpl.shape[0]):                
+                    f,r=ldl.eval3DoFModel(idx, smpl[ismpl][0], smpl[ismpl][1],
+                                  smpl[ismpl][2], smpl[ismpl][3],
+                                  smpl[ismpl][4], smpl[ismpl][5],
+                                  smpl[ismpl][6], smpl[ismpl][7],
+                                  m, rx, ry, par)
+                    fs.append(f[0])
+                    fs.append(f[1])
+                    fs.append(f[2])
+                    rs.append(r[0])
+                    rs.append(r[1])
+                    rs.append(r[2])
+                fs=np.array(fs)
+                rs=np.array(rs)
+                np.savetxt(("solve3dof_fs_%d.csv"%idx), fs, delimiter=',', fmt="%.2f")
+                np.savetxt(("solve3dof_rs_%d.csv"%idx), rs, delimiter=',', fmt="%.2f")                              
+            else:
+                par=None
+        else:
+            par=None
+
+        return par
     
     def solve(idx, smpl, m, rx, ry):
         eqxy=[]
@@ -963,11 +1056,17 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     parasst=solve_st(2,smpl_as_st)
     parapst=solve_st(1,smpl_ap_st)
     paradst=solve_st(0,smpl_ad_st)
+
     
+    paras=solve_with_st_par(2, smpl_as, parasst, m_as, rx_as, ry_as)
+    parap=solve_with_st_par(1, smpl_ap, parapst, m_ap, rx_ap, ry_ap)
+    parad=solve_with_st_par(0, smpl_ad, paradst, m_ad, rx_ad, ry_ad)
+
     paras=solve(2, smpl_as, m_as, rx_as, ry_as)
     parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
     parad=solve(0, smpl_ad, m_ad, rx_ad, ry_ad)    
 
+    
     par={}
     if(parad is not None):
         par = {**par,**parad}
