@@ -1501,20 +1501,15 @@ def get3DoFEqSt(u, du, n):
     res=du
     return eq,du
 
-def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
+def get3DoFEqN(u, du, v, dv, r, dr, psi, n, xr, yr,parXY):
     '''
     An equation for 5 parameters below is generated.
-      "s ma_nr","s dl_nv", "s dl_nr","s dq_nv", "s dq_nr"
+      "sIz - s ma_nr","s dl_nv", "s dl_nr","s dq_nv", "s dq_nr"
     '''
     # parXY is given as the following order.
-    #   ["xg", "yg", "s ma_yv", "s ma_nv", "s CL", "s CD", "s CTL", "s CTQ"]
+    #   ["s m xg", "s m yg", "sm - s ma_yv", "s ma_nv", "s CL", "s CD", "s CTL", "s CTQ"]
 
-    # build a set of stable turn equations
-    xg = parXY[0]
-    yg = parXY[1]
-    Iz = sm * (xg * xg  + yg * yg)
-    Izdr = Iz * dr
-    
+    # build a set of stable turn equations    
     vabsv = v * abs(v)
     rabsr = r * abs(r)
     nabsn = n * abs(n)
@@ -1523,12 +1518,7 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
     ur = u * r
     uv = u * v
     uu = u * u
-    
-    mur = sm * ur    
-    mdv = sm * dv
-    mvr = sm * vr
-    mdu = sm * du
-    
+     
     # (nrx, nry) radder direction vector
     nrx = math.cos(psi)
     nry = math.sin(psi)
@@ -1555,13 +1545,13 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, sm, xr, yr,parXY):
     if vrnr < 0:
         Ncl = -Ncl
 
-    coeff = [mur+mdv, mvr-mdu, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
+    coeff = [ur+dv, vr-du, -uv, -ur-dv, Ncl, Ncd, Nkl, Nkq]
     
-    res = (sm - 1.0) * uv + Izdr
+    res = -uv
     for iterm in range(len(coeff)):
         res += coeff[iterm] * parXY[iterm]
         
-    eq = [dr, v, r, vabsv, rabsr]
+    eq = [-dr, v, r, vabsv, rabsr]
     
     return eq,res
 
@@ -1569,7 +1559,7 @@ def get3DoFEqXYwithStPar(u,du,v,dv,r,dr,psi,n,
                          sdl_xu, sdq_xu, sCTL, sCTQ, xr,yr):
     '''
     two equations  for 15 parameters below (s means scale 1/(m-ma_xu))
-    "s m", "s m xg", "s m yg", "s ma_yv", "s ma_nv", "s dl_yv", 
+    "s m xg", "s m yg", "sm - s ma_yv", "s ma_nv", "s dl_yv", 
     "s dl_yr", "s dq_yv", "s dq_yr", "s CL", "s CD", "s CTL", "s CTQ"
     ''' 
     # build a set of stable turn equations    
@@ -1613,8 +1603,8 @@ def get3DoFEqXYwithStPar(u,du,v,dv,r,dr,psi,n,
         Xcl = -Xcl        
         Ycl = -Ycl
         
-    eq=[[-vr, -rr, -dr, vr, r, 0, 0, 0, 0, Xcl, Xcd],
-        [dv, dr, -rr, -dv, -dr, -u, -r, -vabsv, -rabsr, Ycl, Ycd]]
+    eq=[[-rr, -dr, vr, r, 0, 0, 0, 0, Xcl, Xcd],
+        [dr, -rr, -dv, -dr, -u, -r, -vabsv, -rabsr, Ycl, Ycd]]
     res=[-du+u*sdl_xu+uabsu*sdq_xu-sCTL*Xkl-sCTQ*Xkq,
          -ur-sCTL*Ykl-sCTQ*Ykq]
     
@@ -1625,7 +1615,7 @@ def get3DoFEqXYwithStPar(u,du,v,dv,r,dr,psi,n,
 def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
     '''
     two equations  for 15 parameters below (s means scale 1/(m-ma_xu))
-    "s m", "s m xg", "s m yg", "s ma_yv", "s ma_nv", "s dl_xu", "s dl_yv", "s dl_yr", "s dq_xu", "s dq_yv", "s dq_yr", "s CL", "s CD", "s CTL", "s CTQ"
+    "s m xg", "s m yg", "s m - s ma_yv", "s ma_nv", "s dl_xu", "s dl_yv", "s dl_yr", "s dq_xu", "s dq_yv", "s dq_yr", "s CL", "s CD", "s CTL", "s CTQ"
     ''' 
     # build a set of stable turn equations    
     uabsu = u * abs(u)

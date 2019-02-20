@@ -809,25 +809,13 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             smpl_ad_st = np.concatenate((smpl_ad_st, smpl))
             
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
-    parxystr = ["sm", "xg", "yg", "ma_yv", "ma_nv", "dl_xu", "dl_yv", "dl_yr", "dq_xu", "dq_yv", "dq_yr", "CL", "CD", "CTL", "CTQ"]
-    parnstr = ["ma_nr","dl_nv", "dl_nr","dq_nv", "dq_nr"]
-
-    def reorder_mdl_param(idx, parxy, parn, ma_xu, scale):
-        par={}
+    
+    def gen_mdl_param_dict(idx, par):
+        pardict={}
         stridx="%d" % idx
-        iparxy=0
-        
-        par["ma_xu"+stridx] = ma_xu
-        par[parxystr[1]+stridx] = parxy[1]
-        par[parxystr[2]+stridx] = parxy[2]
-        
-        for i in range(3, len(parxy)):
-            par[parxystr[i]+stridx]=parxy[i] * scale
-            
-        for i in range(len(parn)):
-            par[parnstr[i]+stridx]=parn[i] * scale
-            
-        return par
+        for i in range(len(parstr)):
+            pardict[parstr[i]+stridx] = par[i]
+        return pardict
                     
     def set_mdl_param(par):
         for j in range(3):
@@ -909,22 +897,19 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             parxy=np.dot(eqxy_inv, resxy)
             print(parxy)
             parxy=[ parxy[i] for i in range(parxy.shape[0]) ]            
-            parxy.insert(5, par_st[0])
-            parxy.insert(8, par_st[1])
+            parxy.insert(4, par_st[0])
+            parxy.insert(7, par_st[1])
             parxy.append(par_st[2])
             parxy.append(par_st[3])
-            parxy[1] = parxy[1] / parxy[0]
-            parxy[2] = parxy[2] / parxy[0]
             for ismpl in range(smpl.shape[0]):                
                 eq,res=ldl.get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
                                       smpl[ismpl][2], smpl[ismpl][3],
                                       smpl[ismpl][4], smpl[ismpl][5],
                                       smpl[ismpl][6], smpl[ismpl][7],
-                                      parxy[0], rx, ry,
-                                      [parxy[1],parxy[2],
-                                       parxy[3],parxy[4],
-                                       parxy[11],parxy[12],
-                                       parxy[13], parxy[14]])
+                                      rx, ry,
+                                      [parxy[0],parxy[1],
+                                       parxy[2],parxy[3], parxy[10],
+                                       parxy[11],parxy[12], parxy[13]])
                 eqn.append(eq)
                 resn.append(res)
                 
@@ -939,10 +924,35 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
                 eqn_inv=psinv(U,s,V)
                 parn=np.dot(eqn_inv, resn)
                 print(parn)
-                ma_xu=m * (parxy[0]-1)/parxy[0]
+                ma_xu=-m
                 scale=(m - ma_xu)
+                ma_yv = m - parxy[2] * scale
+                xg = parxy[0] * scale / m
+                yg = parxy[1] * scale / m
+                Iz = m * (xg * xg + yg * yg)
+                ma_nr = Iz - parn[0] * scale
+                par = [xg,
+                       yg,
+                       ma_xu,
+                       ma_yv,
+                       parxy[3] * scale, #ma_nv
+                       ma_nr,
+                       parxy[4] * scale, # dl_xu
+                       parxy[5] * scale, # dl_yv
+                       parxy[6] * scale, # dl_yr
+                       parn[1] * scale,  # dl_nv
+                       parn[2] * scale,  # dl_nr
+                       parxy[7] * scale, # dq_xu
+                       parxy[8] * scale, # dq_yv
+                       parxy[9] * scale,# dq_yr
+                       parn[3] * scale,  # dq_nv
+                       parn[4] * scale, # dq_nr
+                       parxy[10] * scale,
+                       parxy[11] * scale,
+                       parxy[12] * scale,
+                       parxy[13] * scale ]  
+                par=gen_mdl_param_dict(idx, par)
                 
-                par=reorder_mdl_param(idx, parxy, parn, ma_xu, scale)
                 fs=[]
                 rs=[]
                 for ismpl in range(smpl.shape[0]):                
@@ -997,18 +1007,21 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         if(is_rank_full(s)):
             eqxy_inv=psinv(U,s,V)
             parxy=np.dot(eqxy_inv, resxy)
-            parxy[1] = parxy[1] / parxy[0]
-            parxy[2] = parxy[2] / parxy[0]
+            print(parxy)
+            parxy=[ parxy[i] for i in range(parxy.shape[0]) ]            
+            parxy.insert(4, par_st[0])
+            parxy.insert(7, par_st[1])
+            parxy.append(par_st[2])
+            parxy.append(par_st[3])
             for ismpl in range(smpl.shape[0]):                
                 eq,res=ldl.get3DoFEqN(smpl[ismpl][0], smpl[ismpl][1],
                                       smpl[ismpl][2], smpl[ismpl][3],
                                       smpl[ismpl][4], smpl[ismpl][5],
                                       smpl[ismpl][6], smpl[ismpl][7],
-                                      parxy[0], rx, ry,
-                                      [parxy[1],parxy[2],
-                                       parxy[3],parxy[4],
-                                       parxy[11],parxy[12],parxy[13],
-                                       parxy[14]])
+                                      rx, ry,
+                                      [parxy[0],parxy[1],
+                                       parxy[2],parxy[3], parxy[10],
+                                       parxy[11],parxy[12], parxy[13]])
                 eqn.append(eq)
                 resn.append(res)
                 
@@ -1023,10 +1036,36 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
             if(is_rank_full(s)):
                 eqn_inv=psinv(U,s,V)
                 parn=np.dot(eqn_inv, resn)
-                ma_xu=m * (parxy[0]-1)/parxy[0]
+                print(parn)
+                ma_xu=-m
                 scale=(m - ma_xu)
+                ma_yv = m - parxy[2] * scale
+                xg = parxy[0] * scale / m
+                yg = parxy[1] * scale / m
+                Iz = m * (xg * xg + yg * yg)
+                ma_nr = Iz - parn[0] * scale
+                par = [xg,
+                       yg,
+                       ma_xu,
+                       ma_yv,
+                       parxy[3] * scale, #ma_nv
+                       ma_nr,
+                       parxy[4] * scale, # dl_xu
+                       parxy[5] * scale, # dl_yv
+                       parxy[6] * scale, # dl_yr
+                       parn[1] * scale,  # dl_nv
+                       parn[2] * scale,  # dl_nr
+                       parxy[7] * scale, # dq_xu
+                       parxy[8] * scale, # dq_yv
+                       parxy[9] * scale,# dq_yr
+                       parn[3] * scale,  # dq_nv
+                       parn[4] * scale, # dq_nr
+                       parxy[10] * scale,
+                       parxy[11] * scale,
+                       parxy[12] * scale,
+                       parxy[13] * scale ]  
+                par=gen_mdl_param_dict(idx, par)
                 
-                par=reorder_mdl_param(idx, parxy, parn, ma_xu, scale)
                 fs=[]
                 rs=[]
                 for ismpl in range(smpl.shape[0]):                
@@ -1044,8 +1083,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
                 fs=np.array(fs)
                 rs=np.array(rs)
                 np.savetxt(("solve3dof_fs_%d.csv"%idx), fs, delimiter=',', fmt="%.2f")
-                np.savetxt(("solve3dof_rs_%d.csv"%idx), rs, delimiter=',', fmt="%.2f")              
-                
+                np.savetxt(("solve3dof_rs_%d.csv"%idx), rs, delimiter=',', fmt="%.2f")                                             
             else:
                 par=None
         else:
@@ -1062,10 +1100,11 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
     parap=solve_with_st_par(1, smpl_ap, parapst, m_ap, rx_ap, ry_ap)
     parad=solve_with_st_par(0, smpl_ad, paradst, m_ad, rx_ad, ry_ad)
 
+    '''
     paras=solve(2, smpl_as, m_as, rx_as, ry_as)
     parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
     parad=solve(0, smpl_ad, m_ad, rx_ad, ry_ad)    
-
+    '''
     
     par={}
     if(parad is not None):
