@@ -668,47 +668,13 @@ class AWS1Log:
                                  tmdl, lmdl, terr)
         ldl.saveStableTurn(path, turns)
 
-def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False):
-    #check logs processed
-    log = AWS1Log()
-    for log_time in logs:
-        if not os.path.exists(path_result+"/"+log_time):          
-            log.load(path_log, int(log_time))
-            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
-    # load initial model parameter
-    log.load_model_param(path_model_param)
-
-    # check sogrpm file existence
-    path_sogrpm = path_result + "/sogrpm"
-    if not os.path.exists(path_sogrpm):
-        print("sogrpm result is not found. Now sogrpm is gonna run") 
-        procOpSogRpm(path_log, logs, path_result, force=False)
-
-    # loadun parameter
-    parun = ldl.loadParun(path_sogrpm)
-    
-    # calculate mode threshold
-    # 0 > u astern (mode 2)
-    # 0 < u < uthpd ahead displacement (mode 0)
-    # uthpd < u ahead plane (mode 1)
-    uthpd = opt.cu(parun)    
-    m_as = log.mdl_params["m2"]
-    rx_as = log.mdl_params["xr2"]
-    ry_as = log.mdl_params["yr2"]
-    m_ad = log.mdl_params["m0"]
-    rx_ad = log.mdl_params["xr0"]
-    ry_ad = log.mdl_params["yr0"]             
-    m_ap = log.mdl_params["m1"]
-    rx_ap = log.mdl_params["xr1"]
-    ry_ap = log.mdl_params["yr1"]
-
-    nsmpl=128
-    smpl_ad=None
-    smpl_ap=None
-    smpl_as=None
-    smpl_ad_st=None
-    smpl_ap_st=None
-    smpl_as_st=None
+def sampleFromLogs(path_result, logs, nsmpl, uthpd):
+    smpl_ad = None
+    smpl_ap = None
+    smpl_as = None
+    smpl_ad_st = None
+    smpl_ap_st = None
+    smpl_as_st = None
     
     # sampling nsmpl vectors for each log
     for log_time in logs:
@@ -727,8 +693,7 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         dr=ldl.diffDataVec(t, r)
         
         # select data range with non zero n
-        # split data into three mode
-       
+        # split data into three mode       
         tahd = ldl.findInRangeTimeRanges(t, n, vmax=6000, vmin=600)
         tpln = ldl.findInRangeTimeRanges(t, u, vmax=30, vmin=uthpd)
         tdsp = ldl.complementTimeRange(t, tpln)
@@ -736,9 +701,9 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         tahdpln = ldl.intersectTimeRanges(tahd, tpln) # mode 1
         tast = ldl.findInRangeTimeRanges(t, n, vmax=-600, vmin=-6000) # mode 2
         
-        tstv = ldl.findInRangeTimeRanges(t, u, vmax=1.0, vmin=-1.0)
+        tstv = ldl.findInRangeTimeRanges(t, u, vmax=2.0, vmin=-2.0)
         tstr = ldl.findInRangeTimeRanges(t, r, vmax=0.03, vmin=-0.03)
-        tstphi= ldl.findInRangeTimeRanges(t, phi, vmax=0.08, vmin=-0.08)
+        tstphi= ldl.findInRangeTimeRanges(t, phi, vmax=0.03, vmin=-0.03)
         tst = ldl.intersectTimeRanges(tstv, tstr)
         tst = ldl.intersectTimeRanges(tstphi, tst)
         tahddspst = ldl.intersectTimeRanges(tst, tahddsp)
@@ -762,52 +727,124 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         uadst,duadst,vadst,dvadst,radst,dradst,nadst,phiadst=getTimeRangeVecs(tahddsp)
         uapst,duapst,vapst,dvapst,rapst,drapst,napst,phiapst=getTimeRangeVecs(tahdpln)
         uasst,duasst,vasst,dvasst,rasst,drasst,nasst,phiasst=getTimeRangeVecs(tast)
+
+        def append_smpl_lst(smpl_lst, vecs):
+            smpl = ldl.sampleMaxDistPoints(nsmpl, vecs)
+            if(smpl_lst is None):
+                return smpl
+            elif(smpl is not None):
+                return  np.concatenate((smpl_lst, smpl))
         
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uas,duas,vas,dvas,
-                                        ras,dras,phias,nas])
-        if(smpl_as is None):
-            smpl_as = smpl
-        elif(smpl is not None):
-            smpl_as = np.concatenate((smpl_as, smpl))
+        smpl_as = append_smpl_lst(smpl_as,[uas,duas,vas,dvas,
+                                 ras,dras,phias,nas])
+        smpl_ap = append_smpl_lst(smpl_ap,[uap,duap,vap,dvap,
+                                 rap,drap,phiap,nap])        
+        smpl_ad = append_smpl_lst(smpl_ad,[uad,duad,vad,dvad,
+                                 rad,drad,phiad,nad])
+        smpl_as_st = append_smpl_lst(smpl_as_st, [uasst,duasst,nasst])
+        smpl_ap_st = append_smpl_lst(smpl_ap_st, [uapst,duapst,napst])
+        smpl_ad_st = append_smpl_lst(smpl_ad_st, [uadst,duadst,nadst])
+    
+    return smpl_ad, smpl_ap, smpl_as, smpl_ad_st, smpl_ap_st, smpl_as_st
+
+def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False):
+    #check logs processed
+    log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
+    # load initial model parameter
+    log.load_model_param(path_model_param)
+
+    # check sogrpm file existence
+    path_sogrpm = path_result + "/sogrpm"
+    if not os.path.exists(path_sogrpm):
+        print("sogrpm result is not found. Now sogrpm is gonna run") 
+        procOpSogRpm(path_log, logs, path_result, force=False)
+
+    # loadun parameter
+    parun = ldl.loadParun(path_sogrpm)
+    
+    # calculate mode threshold
+    # 0 > u astern (mode 2)
+    # 0 < u < uthpd ahead displacement (mode 0)
+    # uthpd < u ahead plane (mode 1)
+    uthpd = opt.cu(parun)
+    
+    m_as = log.mdl_params["m2"]
+    rx_as = log.mdl_params["xr2"]
+    ry_as = log.mdl_params["yr2"]
+    m_ad = log.mdl_params["m0"]
+    rx_ad = log.mdl_params["xr0"]
+    ry_ad = log.mdl_params["yr0"]             
+    m_ap = log.mdl_params["m1"]
+    rx_ap = log.mdl_params["xr1"]
+    ry_ap = log.mdl_params["yr1"]
+
+    def save_smpl(smpl, fname):
+        fname=path_result+"/"+fname
+        np.savetxt(fname, smpl, delimiter=',', fmt="%.8f")
+
+    def load_smpl(fname):
+        try:
+            fname=path_result+"/"+fname
+            return np.loadtxt(fname, delimiter=',')            
+        except IOError:
+            return None
         
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uap,duap,vap,dvap,
-                                        rap,drap,phiap,nap])
-        if(smpl_ap is None):
-            smpl_ap = smpl
-        elif(smpl is not None):
-            smpl_ap = np.concatenate((smpl_ap, smpl))
-        
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uad,duad,vad,dvad,
-                                        rad,drad,phiad,nad])
-        if(smpl_ad is None):
-            smpl_ad = smpl
-        elif(smpl is not None):
-            smpl_ad = np.concatenate((smpl_ad, smpl))
-  
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uasst,duasst,nasst])
-        if(smpl_as_st is None):
-            smpl_as_st = smpl
-        elif(smpl is not None):
-            smpl_as_st = np.concatenate((smpl_as_st, smpl))
-        
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uapst,duapst,napst])
-        if(smpl_ap_st is None):
-            smpl_ap_st = smpl
-        elif(smpl is not None):
-            smpl_ap_st = np.concatenate((smpl_ap_st, smpl))
-        
-        smpl = ldl.sampleMaxDistPoints(nsmpl,
-                                       [uadst,duadst,nadst])
-        if(smpl_ad_st is None):
-            smpl_ad_st = smpl
-        elif(smpl is not None):
-            smpl_ad_st = np.concatenate((smpl_ad_st, smpl))
+    nsmpl=128
+    smpl_ad=load_smpl("smpl_ad.csv")
+    smpl_ap=load_smpl("smpl_ap.csv")
+    smpl_as=load_smpl("smpl_as.csv")
+    smpl_ad_st=load_smpl("smpl_ad_st.csv")
+    smpl_ap_st=load_smpl("smpl_ap_st.csv")
+    smpl_as_st=load_smpl("smpl_as_st.csv")
+
+    if(smpl_ad is None or force):
+        smpl_ad,smpl_ap,smpl_as, smpl_ad_st,smpl_ap_st,smpl_as_st = sampleFromLogs(path_result, logs, nsmpl, uthpd)
+        save_smpl(smpl_ad, "smpl_ad.csv")
+        save_smpl(smpl_ap, "smpl_ap.csv")
+        save_smpl(smpl_as, "smpl_as.csv")
+        save_smpl(smpl_ad_st, "smpl_ad_st.csv")
+        save_smpl(smpl_ap_st, "smpl_ap_st.csv")
+        save_smpl(smpl_as_st, "smpl_as_st.csv")
+    
+    def plot_smpl_st(fname, smpl):
+        u=smpl[:,0]
+        du=smpl[:,1]
+        n=smpl[:,2]
+        umax=u.max()
+        umin=u.min()
+        dumax=du.max()
+        dumin=du.min()
+        nmax=n.max()
+        nmin=n.min()
+        color=[]
+        for i in range(smpl.shape[0]):
+            blue = 0.0
+            red = 0.0
+            if du[i] < 0:
+                blue = (dumin - du[i]) / dumin
+                green = 1.0 - blue
+            else:
+                red = (dumax - du[i]) / dumax
+                green = 1.0 - red
+            color.append([red, green, blue])
             
+        color = np.array(color)
+        plt.ylim(nmin, nmax)
+        plt.xlim(umin, umax)
+        plt.scatter(u, n, c=color)
+        plt.xlabel("Velocity [m/s]")
+        plt.ylabel("Revolution [rpm]")
+        plt.savefig(path_result+"/"+fname)
+        plt.clf()
+
+    plot_smpl_st("smpl_ad_st.png",smpl_ad_st)
+    plot_smpl_st("smpl_ap_st.png",smpl_ap_st)
+    plot_smpl_st("smpl_as_st.png",smpl_as_st)
+    
     parstr = ["xg", "yg", "ma_xu", "ma_yv", "ma_nv", "ma_nr", "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr", "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr", "CL", "CD", "CTL", "CTQ"]
     
     def gen_mdl_param_dict(idx, par):
@@ -846,12 +883,13 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         eqs=[]
         ress=[]
         for ismpl in range(smpl.shape[0]):
-            eq,res=ldl.get3DoFEqSt(smpl[ismpl][0], smpl[ismpl][1], smpl[ismpl][2])
+            eq,res=ldl.get3DoFEqSt(smpl[ismpl][0],
+                                   smpl[ismpl][1],
+                                   smpl[ismpl][2])
             eqs.append(eq)
             ress.append(res)
         eqs=np.array(eqs)
         ress=np.array(ress)
-        np.savetxt(("solve3dofst_smpl_%d.csv"%idx),smpl,delimiter=',',fmt="%.2f")
         np.savetxt(("solve3dofst_eq_%d.csv"%idx),eqs, delimiter=',',fmt="%.2f")
         np.savetxt(("solve3dofst_res_%d.csv"%idx),ress, delimiter=',',fmt="%.2f")
         U,s,V=np.linalg.svd(eqs, full_matrices=True)
@@ -884,7 +922,6 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         
         eqxy = np.array(eqxy)
         resxy = np.array(resxy)
-        np.savetxt(("solve3dof_smpl_wst_%d.csv"%idx), smpl, delimiter=',', fmt="%.2f")
         np.savetxt(("solve3dof_eqxy_wst_%d.csv"%idx), eqxy, delimiter=',', fmt="%.2f")
         np.savetxt(("solve3dof_resxy_wst_%d.csv"%idx), resxy, delimiter=',', fmt="%.2f")
         
@@ -996,7 +1033,6 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
         
         eqxy = np.array(eqxy)
         resxy = np.array(resxy)
-        np.savetxt(("solve3dof_smpl_%d.csv"%idx), smpl, delimiter=',', fmt="%.2f")
         np.savetxt(("solve3dof_eqxy_%d.csv"%idx), eqxy, delimiter=',', fmt="%.2f")
         np.savetxt(("solve3dof_resxy_%d.csv"%idx), resxy, delimiter=',', fmt="%.2f")
         
@@ -1091,15 +1127,14 @@ def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False)
 
         return par
 
-    parasst=solve_st(2,smpl_as_st)
-    parapst=solve_st(1,smpl_ap_st)
     paradst=solve_st(0,smpl_ad_st)
-
+    parapst=solve_st(1,smpl_ap_st)
+    parasst=solve_st(2,smpl_as_st)
     
-    paras=solve_with_st_par(2, smpl_as, parasst, m_as, rx_as, ry_as)
-    parap=solve_with_st_par(1, smpl_ap, parapst, m_ap, rx_ap, ry_ap)
     parad=solve_with_st_par(0, smpl_ad, paradst, m_ad, rx_ad, ry_ad)
-
+    parap=solve_with_st_par(1, smpl_ap, parapst, m_ap, rx_ap, ry_ap)
+    paras=solve_with_st_par(2, smpl_as, parasst, m_as, rx_as, ry_as)
+    
     '''
     paras=solve(2, smpl_as, m_as, rx_as, ry_as)
     parap=solve(1, smpl_ap, m_ap, rx_ap, ry_ap)
