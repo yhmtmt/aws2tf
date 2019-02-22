@@ -759,8 +759,12 @@ def plotParams(ts, te, path_model_param, path_log, logs,
         caps=[]
         vecs=[]
         
+        fig_name=path_result+"/"+log_time+"/plt"
+        for i in range(len(par_descs)):
+            fig_name+="_"+par_descs[i]
+        fig_name+=".png"
+        
         for par_desc in par_descs:
-            fimg_name=path_result+"/"+log_time+"/"+par_desc+".png"
             par_desc=par_desc.split(".")
             fname=path_result+"/"+log_time+"/"+par_desc[0]+par_desc[1]+".csv"
             try:
@@ -774,16 +778,17 @@ def plotParams(ts, te, path_model_param, path_log, logs,
                 if len(svgl) != 3:
                     print("Wrong option " + par_desc[iopt])
                     return vec,False
-                w=float(svgl[1])
-                d=float(svgl[2])
+                w=int(svgl[1])
+                d=int(svgl[2])
                 return signal.savgol_filter(seq[:,1], w, d, mode="mirror"),True
+            
             ts=max(seq[0,0],ts)
             te=min(seq[-1,0],te)
             iopt = 2
             if(iopt < len(par_desc)):
                 #process savgol if needed
-                if(par_desc[iopt].find("SVGL") == 4):
-                    seq[:,1],flag=proc_svgl(seq[:,1], par_desc)
+                if(par_desc[iopt].find("SVGL") == 0):
+                    seq[:,1],flag=proc_svgl(seq[:,1], par_desc[iopt])
                     if(flag is False):
                         print("Wrong option " + par_desc[iopt])
                         continue                
@@ -796,8 +801,8 @@ def plotParams(ts, te, path_model_param, path_log, logs,
                     iopt+=1
                     
             if(iopt < len(par_desc)):
-                if(par_desc[iopt].find("SVGL") == 4):
-                    seq[:,1],flag=proc_svgl(seq[:,1], par_desc)
+                if(par_desc[iopt].find("SVGL") == 0):
+                    seq[:,1],flag=proc_svgl(seq[:,1], par_desc[iopt])
                     if(flag is False):
                         print("Wrong option " + par_desc[iopt])
                         continue                
@@ -811,9 +816,9 @@ def plotParams(ts, te, path_model_param, path_log, logs,
             plt.plot(vecs[i][ss:e,0],vecs[i][ss:e,1])
             plt.title(caps[i])
             plt.tight_layout()
-            plt.show()
-            plt.savefig(fimg_name)
-            plt.clf()
+        plt.savefig(fig_name)    
+        plt.show()        
+        plt.clf()
         
 def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False):
     #check logs processed
