@@ -740,6 +740,47 @@ def sampleFromLogs(path_result, logs, nsmpl, uthpd):
     
     return smpl, smpl_st
 
+def plotParams(path_model_param, path_log, logs, path_result, params, force=False):
+    #check logs processed
+    log = AWS1Log()
+    for log_time in logs:
+        if not os.path.exists(path_result+"/"+log_time):          
+            log.load(path_log, int(log_time))
+            log.proc(0, sys.float_info.max, path_result+"/"+log_time)
+    # load initial model parameter
+    log.load_model_param(path_model_param)
+    
+    #decode params
+    # comma separated list of <parameter description>
+    # <parameter description>:=<section>.<param>[.SVGL_<w>_<d>][.D[.SVGL_<w>_<d>]]
+    par_descs=params.split(",")
+    for log_time in logs:
+        caps=[]
+        for par_desc in par_descs:
+            par_desc=par_desc.split(".")
+            fname=path_result+"/"log_time+"/"+par_desc[0]+par_desc[1]+".csv"
+            try:
+                seq=np.loadtxt(fname, delimiter=',')
+            except IOError:
+                print("Cannot open " + fname)
+                continue
+
+            iopt = 2
+            if(iopt < len(par_desc)):
+                #process savgol if needed
+                if(par_desc[iopt].find("SVGL") == 4):
+                    svgl=par_desc[iopt].split("_")
+                    if len(svgl) != 3:
+                        print("Wrong option " + par_desc[iopt])
+                        continue                    
+                    w=float(svgl[1])
+                    d=float(svgl[2])
+                    signal.savgol_filter(seq[:,1], w, d, mode="mirror")
+                else:
+                    print("Wrong option " + par_desc[iopt])
+                iopt+=1
+            
+    
 def solve3DoFModelEx(path_model_param, path_log, logs, path_result, force=False):
     #check logs processed
     log = AWS1Log()

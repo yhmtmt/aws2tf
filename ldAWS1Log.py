@@ -1495,7 +1495,7 @@ def get3DoFEqSt(u, du, n):
     An equation for 4 parameters below is generated
     "s dl_xu", "s dq_xu", "s kl", "s kq"
     '''
-    Xkl = -u * n
+    Xkl = -u * abs(n)
     Xkq = -n * abs(n)
     eq=[u, u*abs(u), -Xkl, -Xkq]
     res=du
@@ -1539,7 +1539,7 @@ def get3DoFEqN(u, du, v, dv, r, dr, psi, n, xr, yr,parXY):
 
     Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
     Ncd = 0.5 * abs(vrnrp) * (-yr * yr * yr * r + xr +xr * xr * r)
-    Nkl = -vrnr * n * (-yr * nrx + xr * nry)
+    Nkl = -vrnr * abs(n) * (-yr * nrx + xr * nry)
     Nkq = -nabsn * (-yr * nrx +xr * nry)
     
     if vrnr < 0:
@@ -1592,11 +1592,11 @@ def get3DoFEqXYwithStPar(u,du,v,dv,r,dr,psi,n,
     
     Xcl = 0.5 * vrnrp * (- vry)
     Xcd = 0.5 * abs(vrnrp) * (vrx)
-    Xkl = -vrnr * n * nrx
+    Xkl = -vrnr * abs(n) * nrx
     Xkq = -nabsn * nrx
     Ycl = 0.5 * vrnrp * (vrx)
     Ycd = 0.5 * abs(vrnrp) * (vry)
-    Ykl = -vrnr * n * nry
+    Ykl = -vrnr * abs(n) * nry
     Ykq = -nabsn * nry
     
     if vrnr < 0:
@@ -1647,11 +1647,11 @@ def get3DoFEqXY(u,du,v,dv,r,dr,psi,n,xr,yr):
     
     Xcl = 0.5 * vrnrp * (- vry)
     Xcd = 0.5 * abs(vrnrp) * (vrx)
-    Xkl = -vrnr * n * nrx
+    Xkl = -vrnr * abs(n) * nrx
     Xkq = -nabsn * nrx
     Ycl = 0.5 * vrnrp * (vrx)
     Ycd = 0.5 * abs(vrnrp) * (vry)
-    Ykl = -vrnr * n * nry
+    Ykl = -vrnr * abs(n) * nry
     Ykq = -nabsn * nry
     
     if vrnr < 0:
@@ -1735,15 +1735,15 @@ def eval3DoFModel(idx, u,du,v,dv,r,dr,psi,n,m,xr,yr,par):
 
     Xcl = 0.5 * vrnrp * (- vry)
     Xcd = 0.5 * abs(vrnrp) * (vrx)
-    Xkl = -vrnr * n * nrx
+    Xkl = -vrnr * abs(n) * nrx
     Xkq = -nabsn * nrx
     Ycl = 0.5 * vrnrp * (vrx)
     Ycd = 0.5 * abs(vrnrp) * (vry)
-    Ykl = -vrnr * n * nry
+    Ykl = -vrnr * abs(n) * nry
     Ykq = -nabsn * nry    
     Ncl = 0.5 * vrnrp * (-yr * v + xr * yr * r + xr * u - xr * yr * r)
     Ncd = 0.5 * abs(vrnrp) * (-yr * yr * yr * r + xr +xr * xr * r)
-    Nkl = -vrnr * n * (-yr * nrx + xr * nry)
+    Nkl = -vrnr * abs(n) * (-yr * nrx + xr * nry)
     Nkq = -nabsn * (-yr * nrx +xr * nry)
     
     if vrnr < 0:

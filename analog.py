@@ -22,12 +22,14 @@ parser.add_argument("--list", action="store_true", help="List logs selected")
 parser.add_argument("--force", action="store_true", help="Force process all logs")
 parser.add_argument("--new", action="store_true", help="Process only new logs")
 parser.add_argument("--debug", action="store_true", help="Debug mode")
+parser.add_argument("--params", type=str, default="", help="Target parameter list")
 
 args=parser.parse_args()
 nlog=args.nlog
 op=args.op
 pstat=args.pstat
 sel=args.sel
+params=args.params
 logsfile=args.logs
 logs=[]
 path_log=args.path_log
@@ -90,9 +92,13 @@ if len(op) != 0:
             log.load(path_log, int(log_time))
             log.play(ts, te)
     elif op == "opt3dof":
-        AWS1Log.solve3DoFModel(path_model_param, path_log, logs, path_result, args.force)
+        AWS1Log.solve3DoFModel(path_model_param, path_log,
+                               logs, path_result, args.force)
     elif op == "opt3dofex":
-        AWS1Log.solve3DoFModelEx(path_model_param, path_log, logs, path_result, args.force)
+        AWS1Log.solve3DoFModelEx(path_model_param, path_log,
+                                 logs, path_result, args.force)
+    elif op == "plot":
+        AWS1Log.plotParams(ts, te, path_model_param, path_log, logs, path_result, params, args.force)
     else:
         print("Unknown Operation %s" % op)
             
