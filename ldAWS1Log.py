@@ -792,7 +792,7 @@ def loadEngstate(fname, log_time):
     frate = np.array(frate)
 
     file.close()
-    return {'t':trapid, 'rpm':rpm, 'trim':trim} ,{'t':tdyn, 'valt':valt, 'temp':temp, 'frate':frate}
+    return {'t':trapid, 'rev':rpm, 'trim':trim} ,{'t':tdyn, 'valt':valt, 'temp':temp, 'frate':frate}
 
 def loadState(fname, log_time):
     print("Analyzing " + fname)

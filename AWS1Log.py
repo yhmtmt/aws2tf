@@ -128,7 +128,7 @@ T=np.matmul(R.transpose(), Tc) + Ts
 #sm=P(RMw-T)
 m=projPoints(Pcam, R, T, horizon)
 
-par_engr=['rpm','trim']
+par_engr=['rev','trim']
 str_engr=[["Engine Rev", "RPM"], ["Engine Trim", "None"]]
 par_engd=['valt','temp','frate']
 str_engd=[["Alternator Output", "V"], ["Engine Temperature", "DegC"], ["Fuel Consumption", "L/h"]]
@@ -151,6 +151,29 @@ str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], 
 
 par_model_state=['ueng', 'urud', 'gamma', 'delta', 'sdelta', 'srudder', 'u', 'v', 'r', 'n', 'psi']
 str_model_state=[['Engine Control Instruction', 'None'], ['Rudder Control Instruction', 'None'], ['Gear Lever Position', 'None'], ['Throttle Lever Position', 'None'], ['Throttle Lever slack', 'None'], ['Rudder Slack', 'None'], ['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Propeller Rotation', 'rpm'], ['Rudder Angle', 'rad']]
+
+str_data_section=["apinst", "uiinst", "ctrlst", "stpos", "stvel", "statt",
+                  "st9dof", "stdp", "engr", "engd", "model_state"]
+
+def genParIdx(str_par):
+    par_idx={}
+    for idx in range(len(str_par)):
+        par_idx[str_par[idx]]=idx
+    return par_idx
+
+str_par_dict={
+    str_data_section[0]:[genParIdx(par_cinst),par_cinst,str_cinst],
+    str_data_section[1]:[genParIdx(par_cinst),par_cinst,str_cinst],
+    str_data_section[2]:[genParIdx(par_cstat),par_cstat,str_cstat],
+    str_data_section[3]:[genParIdx(par_stpos),par_stpos,str_stpos],
+    str_data_section[4]:[genParIdx(par_stvel),par_stvel,str_stvel],
+    str_data_section[5]:[genParIdx(par_statt),par_statt,str_statt],    
+    str_data_section[6]:[genParIdx(par_9dof),par_9dof,str_9dof],
+    str_data_section[7]:[genParIdx(par_stdp),par_stdp,str_stdp],
+    str_data_section[8]:[genParIdx(par_engr),par_engr,str_engr],
+    str_data_section[9]:[genParIdx(par_engd),par_engd,str_engd],
+    str_data_section[10]:[genParIdx(par_model_state),par_model_state,str_model_state]
+    }
 
 class AWS1Log:
     ''' AWS1 log '''
@@ -237,16 +260,16 @@ class AWS1Log:
     
     def load(self, path_aws1_log, log_time=-1, dt=0.1):
         data,log_time=ldl.loadLog(path_aws1_log, log_time)
-        self.apinst = data['apinst']
-        self.uiinst = data['uiinst']
-        self.ctrlst = data['ctrlst']
-        self.stpos = data['stpos']
-        self.stvel = data['stvel']
-        self.statt = data['statt']
-        self.st9dof = data['st9dof']
-        self.stdp = data['stdp']
-        self.engr = data['engr']
-        self.engd = data['engd']
+        self.apinst = data[str_data_section[0]]
+        self.uiinst = data[str_data_section[1]]
+        self.ctrlst = data[str_data_section[2]]
+        self.stpos = data[str_data_section[3]]
+        self.stvel = data[str_data_section[4]]
+        self.statt = data[str_data_section[5]]
+        self.st9dof = data[str_data_section[6]]
+        self.stdp = data[str_data_section[7]]
+        self.engr = data[str_data_section[8]]
+        self.engd = data[str_data_section[9]]
         self.strm = data['strm']
         
         #calculate model state
@@ -392,16 +415,16 @@ class AWS1Log:
             ret,frm = strm.read()
             ifrm += 1
         
-        ldl.printTimeHead("apinst", iapinst, tapinst)
-        ldl.printTimeHead("uiinst", iuiinst, tuiinst)
-        ldl.printTimeHead("ctrlst", ictrlst, tctrlst)
-        ldl.printTimeHead("stpos", istpos, tstpos)
-        ldl.printTimeHead("stvel", istvel, tstvel)
-        ldl.printTimeHead("statt", istatt, tstatt)
-        ldl.printTimeHead("st9dof", i9dof, tst9dof)
-        ldl.printTimeHead("stdp", istdp, tstdp)
-        ldl.printTimeHead("engr", iengr, tengr)
-        ldl.printTimeHead("engd", iengd, tengd)
+        ldl.printTimeHead(str_data_section[0], iapinst, tapinst)
+        ldl.printTimeHead(str_data_section[1], iuiinst, tuiinst)
+        ldl.printTimeHead(str_data_section[2], ictrlst, tctrlst)
+        ldl.printTimeHead(str_data_section[3], istpos, tstpos)
+        ldl.printTimeHead(str_data_section[4], istvel, tstvel)
+        ldl.printTimeHead(str_data_section[5], istatt, tstatt)
+        ldl.printTimeHead(str_data_section[6], i9dof, tst9dof)
+        ldl.printTimeHead(str_data_section[7], istdp, tstdp)
+        ldl.printTimeHead(str_data_section[8], iengr, tengr)
+        ldl.printTimeHead(str_data_section[9], iengd, tengd)
         ldl.printTimeHead("strm", istrm, tstrm)
 
         tcur = ts
@@ -416,43 +439,43 @@ class AWS1Log:
             print ("Time %fsec" % tcur)
             iapinst = ldl.seekNextDataIndex(tcur, iapinst, tapinst)
             vapinst = ldl.itpltDataVec(lapinst, tcur, tapinst, iapinst)
-            ldl.printDataVec("apinst", par_cinst, vapinst)
+            ldl.printDataVec(str_data_section[0], par_cinst, vapinst)
 
             iuiinst = ldl.seekNextDataIndex(tcur, iuiinst, tuiinst)
             vuiinst = ldl.itpltDataVec(luiinst, tcur, tuiinst, iuiinst)
-            ldl.printDataVec("uiinst", par_cinst, vuiinst)
+            ldl.printDataVec(str_data_section[1], par_cinst, vuiinst)
 
             ictrlst = ldl.seekNextDataIndex(tcur, ictrlst, tctrlst)
             vctrlst = ldl.itpltDataVec(lctrlst, tcur, tctrlst, ictrlst)
-            ldl.printDataVec("ctrlst", par_cstat, vctrlst)
+            ldl.printDataVec(str_data_section[2], par_cstat, vctrlst)
 
             istpos = ldl.seekNextDataIndex(tcur, istpos, tstpos)
             vstpos = ldl.itpltDataVec(lstpos, tcur, tstpos, istpos)
-            ldl.printDataVec("stpos", par_stpos, vstpos)
+            ldl.printDataVec(str_data_section[3], par_stpos, vstpos)
 
             istvel = ldl.seekNextDataIndex(tcur, istvel, tstvel)
             vstvel = ldl.itpltDataVec(lstvel, tcur, tstvel, istvel, [True, False, False, False])
-            ldl.printDataVec("stvel", par_stvel, vstvel)
+            ldl.printDataVec(str_data_section[4], par_stvel, vstvel)
 
             istatt = ldl.seekNextDataIndex(tcur, istatt, tstatt)
             vstatt = ldl.itpltDataVec(lstatt, tcur, tstatt, istatt, [False, False, True, False, False, False, False])
-            ldl.printDataVec("statt", par_statt, vstatt)
+            ldl.printDataVec(str_data_section[5], par_statt, vstatt)
 
             i9dof = ldl.seekNextDataIndex(tcur, i9dof, tst9dof)
             vst9dof = ldl.itpltDataVec(lst9dof, tcur, tst9dof, i9dof)
-            ldl.printDataVec("st9dof", par_9dof, vst9dof)
+            ldl.printDataVec(str_data_section[6], par_9dof, vst9dof)
 
             istdp = ldl.seekNextDataIndex(tcur, istdp, tstdp)
             vstdp = ldl.itpltDataVec(lstdp, tcur, tstdp, istdp)
-            ldl.printDataVec("stdp", par_stdp, vstdp)
+            ldl.printDataVec(str_data_section[7], par_stdp, vstdp)
 
             iengr = ldl.seekNextDataIndex(tcur, iengr, tengr)
             vengr = ldl.itpltDataVec(lengr, tcur, tengr, iengr)
-            ldl.printDataVec("engr", par_engr, vengr)
+            ldl.printDataVec(str_data_section[8], par_engr, vengr)
 
             iengd = ldl.seekNextDataIndex(tcur, iengd, tengd)
             vengd = ldl.itpltDataVec(lengd, tcur, tengd, iengd)
-            ldl.printDataVec("engr", par_engd, vengd)
+            ldl.printDataVec(str_data_section[9], par_engd, vengd)
         
             istrm = ldl.seekNextDataIndex(tcur, istrm, tstrm)
             ifrm = int(strm.get(cv2.CAP_PROP_POS_FRAMES))
@@ -601,30 +624,32 @@ class AWS1Log:
             ftotal = ldl.integrateData(tengd, self.engd['frate'])
             ftotal /= 3600.0
             ldl.saveStatGiven(statcsv, "ftotal", ftotal, ftotal, ftotal, ftotal)
-            ldl.saveStatGiven(statcsv, "yaw_bias", self.yaw_bias_max, self.yaw_bias_min, self.yaw_bias, self.yaw_bias_dev)
+            ldl.saveStatGiven(statcsv, "yaw_bias", self.yaw_bias_max,
+                              self.yaw_bias_min, self.yaw_bias,
+                              self.yaw_bias_dev)
             
         # plot data
-        ldl.plotDataSection(path, "apinst", par_cinst, str_cinst,
+        ldl.plotDataSection(path, str_data_section[0], par_cinst, str_cinst,
                             lapinst, tapinst, iapinst[0], iapinstf[1])
-        ldl.plotDataSection(path, "uiinst", par_cinst, str_cinst,
+        ldl.plotDataSection(path, str_data_section[1], par_cinst, str_cinst,
                             luiinst, tuiinst, iuiinst[0], iuiinstf[1])
-        ldl.plotDataSection(path, "ctrlst", par_cstat, str_cstat,
+        ldl.plotDataSection(path, str_data_section[2], par_cstat, str_cstat,
                             lctrlst, tctrlst, ictrlst[0], ictrlstf[1])
-        ldl.plotDataSection(path, "stpos", par_stpos, str_stpos,
+        ldl.plotDataSection(path, str_data_section[3], par_stpos, str_stpos,
                             lstpos, tstpos, istpos[0], istposf[1])
-        ldl.plotDataSection(path, "stvel", par_stvel, str_stvel,
+        ldl.plotDataSection(path, str_data_section[4], par_stvel, str_stvel,
                             lstvel, tstvel, istvel[0], istvelf[1])
-        ldl.plotDataSection(path, "statt", par_statt, str_statt,
+        ldl.plotDataSection(path, str_data_section[5], par_statt, str_statt,
                             lstatt, tstatt, istatt[0], istattf[1])
-        ldl.plotDataSection(path, "st9doff", par_9dof, str_9dof,
+        ldl.plotDataSection(path, str_data_section[6], par_9dof, str_9dof,
                             lst9dof, tst9dof, i9dof[0], i9doff[1])
-        ldl.plotDataSection(path, "stdp", par_stdp, str_stdp,
+        ldl.plotDataSection(path, str_data_section[7], par_stdp, str_stdp,
                             lstdp, tstdp, istdp[0], istdpf[1])
-        ldl.plotDataSection(path, "engr", par_engr, str_engr,
+        ldl.plotDataSection(path, str_data_section[8], par_engr, str_engr,
                             lengr, tengr, iengr[0], iengrf[1])
-        ldl.plotDataSection(path, "engd", par_engd, str_engd,
+        ldl.plotDataSection(path, str_data_section[9], par_engd, str_engd,
                             lengd, tengd, iengd[0], iengdf[1])
-        ldl.plotDataSection(path, "model_state", par_model_state, str_model_state,
+        ldl.plotDataSection(path, str_data_section[10], par_model_state, str_model_state,
                             lmdl, tmdl, imdl[0], imdlf[1])
 
         minlat = min(lstpos[0][istpos[0]:istposf[1]]) 
