@@ -150,7 +150,7 @@ par_cinst=['acs','meng','seng','rud']
 str_cinst=[["Control Source", "None"], ["Main Engine Throttle Control","None"], ["Sub Engine Throttle Control","None"],["Rudder Control", "None"]]
 
 par_model_state=['ueng', 'urud', 'gamma', 'delta', 'sdelta', 'srudder', 'u', 'v', 'r', 'n', 'psi']
-str_model_state=[['Engine Control Instruction', 'None'], ['Rudder Control Instruction', 'None'], ['Gear Lever Position', 'None'], ['Throttle Lever Position', 'None'], ['Throttle Lever slack', 'None'], ['Rudder Slack', 'None'], ['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Propeller Rotation', 'rpm'], ['Rudder Angle', 'rad']]
+str_model_state=[['Engine Control Instruction', 'None'], ['Rudder Control Instruction', 'None'], ['Gear Lever Position', 'None'], ['Throttle Lever Position', 'None'], ['Throttle Lever slack', 'None'], ['Rudder Slack', 'None'], ['Speed in X', 'm/s'],['Speed in Y', 'm/s'],['Yaw rate', 'rad/s'], ['Engine Revolution', 'rpm'], ['Rudder Angle', 'rad']]
 
 str_data_section=["apinst", "uiinst", "ctrlst", "stpos", "stvel", "statt",
                   "st9dof", "stdp", "engr", "engd", "model_state"]
@@ -783,7 +783,8 @@ def plotParams(ts, te, path_model_param, path_log, logs,
     for log_time in logs:
         caps=[]
         vecs=[]
-        
+        str_exps=[]
+        str_units=[]
         fig_name=path_result+"/"+log_time+"/plt"
         for i in range(len(par_descs)):
             fig_name+="_"+par_descs[i]
@@ -793,10 +794,20 @@ def plotParams(ts, te, path_model_param, path_log, logs,
             par_desc=par_desc.split(".")
             fname=path_result+"/"+log_time+"/"+par_desc[0]+par_desc[1]+".csv"
             try:
-                seq=np.loadtxt(fname, delimiter=',')
+                seq=np.loadtxt(fname, delimiter=',')                
             except IOError:
                 print("Cannot open " + fname)
                 continue
+            
+            def get_par_str(section, par):
+                str_section=str_par_dict[section]
+                ipar=str_section[0][par]
+                return str_section[1][ipar],str_section[2][ipar]
+
+            par_str,par_exp=get_par_str(par_desc[0],par_desc[1])
+
+            str_exp=par_exp[0]
+            str_unit=par_exp[1]
             
             def proc_svgl(vec,desc):
                 svgl=desc.split("_")
@@ -823,6 +834,8 @@ def plotParams(ts, te, path_model_param, path_log, logs,
                 #process D option
                 if(par_desc[iopt] == "D"):
                     seq[:,1]=ldl.diffDataVec(seq[:,0],seq[:,1])
+                    str_exp = "Deriv. " + str_exp
+                    str_unit = ("(%s)/s" % str_unit)
                     iopt+=1
                     
             if(iopt < len(par_desc)):
@@ -834,12 +847,15 @@ def plotParams(ts, te, path_model_param, path_log, logs,
                     iopt+=1
             caps.append((par_desc[0]+"."+par_desc[1]))
             vecs.append(seq)
+            str_exps.append(str_exp)
+            str_units.append(str_unit)
+            
         for i in range(len(caps)):
             s,ss=ldl.seekLogTime(vecs[i][:,0], ts)
             e,ee=ldl.seekLogTime(vecs[i][:,0], te)
             plt.subplot(len(caps),1, i+1)
             plt.plot(vecs[i][ss:e,0],vecs[i][ss:e,1])
-            plt.title(caps[i])
+            plt.ylabel(str_exps[i]+" ["+str_units[i]+"]")
             plt.tight_layout()
         plt.savefig(fig_name)    
         plt.show()        
