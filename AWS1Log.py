@@ -705,10 +705,10 @@ def sampleFromLogs(path_result, logs, nsmpl, uthpd):
         t,u,v,r,phi,n=ldl.load_u_v_r_phi_n(path_result+"/"+log_time)
         
         # apply savgol on u,v,r,n
-        u=signal.savgol_filter(u, 9, 3, mode="mirror")
-        v=signal.savgol_filter(v, 9, 3, mode="mirror")
-        r=signal.savgol_filter(r, 9, 3, mode="mirror")
-        n=signal.savgol_filter(n, 9, 3, mode="mirror")
+        u=signal.savgol_filter(u, 51, 3, mode="mirror")
+        v=signal.savgol_filter(v, 51, 3, mode="mirror")
+        r=signal.savgol_filter(r, 51, 3, mode="mirror")
+        n=signal.savgol_filter(n, 51, 3, mode="mirror")
         
         # calculate du,dv,dr
         du=ldl.diffDataVec(t, u)
@@ -855,7 +855,7 @@ def plotParams(ts, te, path_model_param, path_log, logs,
             e,ee=ldl.seekLogTime(vecs[i][:,0], te)
             plt.subplot(len(caps),1, i+1)
             plt.plot(vecs[i][ss:e,0],vecs[i][ss:e,1])
-            plt.ylabel(str_exps[i]+" ["+str_units[i]+"]")
+            plt.title(str_exps[i]+" ["+str_units[i]+"]")
             plt.tight_layout()
         plt.savefig(fig_name)    
         plt.show()        
